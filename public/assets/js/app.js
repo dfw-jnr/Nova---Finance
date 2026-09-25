@@ -224,6 +224,17 @@
     $('#detail-created').textContent = row.created_at || '—';
     modal.dataset.id = row.id;
     modal._row = row;
+    const wrap = $('#detail-receipt-wrap');
+    const img = $('#detail-receipt');
+    if (wrap && img) {
+      if (row.has_receipt) {
+        wrap.hidden = false;
+        img.src = '/api/receipts/?transaction_id=' + encodeURIComponent(row.id) + '&t=' + Date.now();
+      } else {
+        wrap.hidden = true;
+        img.removeAttribute('src');
+      }
+    }
     NovaUI.openModal('modal-detail');
   }
 
@@ -252,6 +263,7 @@
     $('#txn-edit-id').value = '';
     $('#txn-title').textContent = 'Add Transaction';
     $('#txn-date').value = new Date().toISOString().slice(0, 10);
+    NovaReceipt?.clearPending();
   }
 
   function bindForms() {
@@ -277,6 +289,11 @@
       }
       if (!ok) return;
       try {
+        const receipt = NovaReceipt?.getPending?.();
+        if (receipt?.base64) {
+          payload.receipt_base64 = receipt.base64;
+          payload.receipt_ocr = receipt.ocr || '';
+        }
         if (editId) {
           await NovaAPI.updateTransaction(editId, payload);
           NovaUI.toast('Transaction updated');
@@ -524,6 +541,7 @@
       }
       bindNav();
       bindForms();
+      NovaReceipt?.bind?.();
       await populateSelects();
       showScreen('home');
 

@@ -70,6 +70,10 @@
     const body = { ...payload, client_id: clientId };
 
     if (!navigator.onLine) {
+      if (body.receipt_base64) {
+        delete body.receipt_base64;
+        delete body.receipt_ocr;
+      }
       const pending = getPending();
       pending.push({ ...body, _queued_at: Date.now() });
       setPending(pending);
@@ -80,6 +84,10 @@
       return await request('/api/transactions/', { method: 'POST', body });
     } catch (e) {
       if (!navigator.onLine || e.status === 0) {
+        if (body.receipt_base64) {
+          delete body.receipt_base64;
+          delete body.receipt_ocr;
+        }
         const pending = getPending();
         pending.push({ ...body, _queued_at: Date.now() });
         setPending(pending);

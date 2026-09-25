@@ -150,3 +150,15 @@ INSERT OR IGNORE INTO categories (id, user_id, name, type, icon, color, is_syste
 (12, NULL, 'Salary', 'income', 'salary', '#3DDC97', 1),
 (13, NULL, 'Freelance', 'income', 'freelance', '#6EA8FE', 1),
 (14, NULL, 'Other', 'both', 'other', '#94A3B8', 1);
+
+CREATE TABLE IF NOT EXISTS receipts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  transaction_id INTEGER NOT NULL UNIQUE,
+  mime TEXT NOT NULL DEFAULT 'image/jpeg',
+  data_blob BLOB NOT NULL,
+  ocr_text TEXT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+);

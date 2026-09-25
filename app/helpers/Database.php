@@ -31,6 +31,7 @@ final class Database
                 $sql = file_get_contents(dirname(__DIR__, 2) . '/database/schema.sqlite.sql');
                 self::$pdo->exec($sql ?: '');
             }
+            self::ensureReceiptsTable();
             return self::$pdo;
         }
 
@@ -61,6 +62,7 @@ final class Database
         if (self::needsSchema('mysql')) {
             self::migrateMysql();
         }
+        self::ensureReceiptsTable();
         self::seedSystemCategories();
 
         return self::$pdo;
@@ -123,6 +125,48 @@ final class Database
         foreach ($rows as $row) {
             $stmt->execute($row);
         }
+    }
+
+    /** Additive migration so existing MySQL/SQLite DBs get receipts without wipe. */
+    private static function ensureReceiptsTable(): void
+    {
+        if (self::isSqlite()) {
+            self::$pdo->exec(
+                'CREATE TABLE IF NOT EXISTS receipts (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id INTEGER NOT NULL,
+                  transaction_id INTEGER NOT NULL UNIQUE,
+                  mime TEXT NOT NULL DEFAULT \'image/jpeg\',
+                  data_blob BLOB NOT NULL,
+                  ocr_text TEXT NULL,
+                  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                  FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+                )'
+            );
+            return;
+        }
+
+        $stmt = self::$pdo->query("SHOW TABLES LIKE 'receipts'");
+        if ($stmt && $stmt->fetch()) {
+            return;
+        }
+        self::$pdo->exec(
+            'CREATE TABLE receipts (
+              id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              user_id         BIGINT UNSIGNED NOT NULL,
+              transaction_id  BIGINT UNSIGNED NOT NULL,
+              mime            VARCHAR(64) NOT NULL DEFAULT \'image/jpeg\',
+              data_blob       MEDIUMBLOB NOT NULL,
+              ocr_text        TEXT NULL,
+              created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_receipt_txn (transaction_id),
+              KEY idx_receipts_user (user_id),
+              CONSTRAINT fk_receipt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+              CONSTRAINT fk_receipt_txn FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
     }
 
     public static function pdo(): \PDO

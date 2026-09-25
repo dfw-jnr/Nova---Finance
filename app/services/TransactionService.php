@@ -9,6 +9,7 @@ use Nova\Helpers\Response;
 use Nova\Helpers\Validator;
 use Nova\Repositories\AccountRepository;
 use Nova\Repositories\CategoryRepository;
+use Nova\Repositories\ReceiptRepository;
 use Nova\Repositories\TransactionRepository;
 
 final class TransactionService
@@ -17,6 +18,7 @@ final class TransactionService
         private TransactionRepository $txns = new TransactionRepository(),
         private AccountRepository $accounts = new AccountRepository(),
         private CategoryRepository $categories = new CategoryRepository(),
+        private ReceiptRepository $receipts = new ReceiptRepository(),
     ) {}
 
     public function create(int $userId, array $input, string $userCurrency): array
@@ -97,6 +99,8 @@ final class TransactionService
             throw $e;
         }
 
+        $this->attachReceiptIfPresent($userId, $id, $input);
+
         return $this->txns->findOwned($id, $userId) ?? ['id' => $id];
     }
 
@@ -148,6 +152,8 @@ final class TransactionService
             throw $e;
         }
 
+        $this->attachReceiptIfPresent($userId, $id, $input);
+
         return $this->txns->findOwned($id, $userId) ?? [];
     }
 
@@ -168,5 +174,31 @@ final class TransactionService
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    private function attachReceiptIfPresent(int $userId, int $transactionId, array $input): void
+    {
+        $raw = (string) ($input['receipt_base64'] ?? '');
+        if ($raw === '') {
+            return;
+        }
+        // data:image/jpeg;base64,.... or bare base64
+        $mime = 'image/jpeg';
+        if (preg_match('#^data:(image/(?:jpeg|jpg|png|webp|heic|heif));base64,#i', $raw, $m)) {
+            $mime = strtolower($m[1]);
+            if ($mime === 'image/jpg') {
+                $mime = 'image/jpeg';
+            }
+            $raw = substr($raw, strpos($raw, ',') + 1);
+        }
+        $binary = base64_decode($raw, true);
+        if ($binary === false || strlen($binary) < 32) {
+            Response::error('VALIDATION_ERROR', 'Invalid receipt image.');
+        }
+        if (strlen($binary) > 3_500_000) {
+            Response::error('VALIDATION_ERROR', 'Receipt image is too large (max ~3MB).');
+        }
+        $ocr = isset($input['receipt_ocr']) ? substr((string) $input['receipt_ocr'], 0, 8000) : null;
+        $this->receipts->upsert($userId, $transactionId, $mime, $binary, $ocr);
     }
 }

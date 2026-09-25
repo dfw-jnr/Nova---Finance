@@ -334,6 +334,34 @@
   margin-bottom: var(--space-4);
 }
 
+.receipt-box {
+  margin: var(--space-3) 0 var(--space-4);
+  padding: var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-soft);
+}
+.receipt-box__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.receipt-preview {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  margin-top: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.receipt-status {
+  margin: var(--space-2) 0 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
 @media (max-width: 374px) {
   .stat .value { font-size: 0.8rem; }
   .hero-balance .value { font-size: 1.55rem; }

@@ -153,3 +153,18 @@ CREATE TABLE IF NOT EXISTS sync_keys (
   UNIQUE KEY uq_sync (user_id, client_id),
   CONSTRAINT fk_sync_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS receipts (
+  id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id         BIGINT UNSIGNED NOT NULL,
+  transaction_id  BIGINT UNSIGNED NOT NULL,
+  mime            VARCHAR(64) NOT NULL DEFAULT 'image/jpeg',
+  data_blob       MEDIUMBLOB NOT NULL,
+  ocr_text        TEXT NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_receipt_txn (transaction_id),
+  KEY idx_receipts_user (user_id),
+  CONSTRAINT fk_receipt_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_receipt_txn FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

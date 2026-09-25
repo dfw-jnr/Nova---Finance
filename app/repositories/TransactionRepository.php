@@ -43,7 +43,8 @@ final class TransactionRepository
     public function findOwned(int $id, int $userId): ?array
     {
         $stmt = Database::pdo()->prepare(
-            'SELECT t.*, c.name AS category_name, a.name AS account_name
+            'SELECT t.*, c.name AS category_name, a.name AS account_name,
+                    (SELECT 1 FROM receipts r WHERE r.transaction_id = t.id LIMIT 1) AS has_receipt
              FROM transactions t
              LEFT JOIN categories c ON c.id = t.category_id
              LEFT JOIN accounts a ON a.id = t.account_id
@@ -57,7 +58,8 @@ final class TransactionRepository
 
     public function list(int $userId, array $filters = []): array
     {
-        $sql = 'SELECT t.*, c.name AS category_name, a.name AS account_name
+        $sql = 'SELECT t.*, c.name AS category_name, a.name AS account_name,
+                       (SELECT 1 FROM receipts r WHERE r.transaction_id = t.id LIMIT 1) AS has_receipt
                 FROM transactions t
                 LEFT JOIN categories c ON c.id = t.category_id
                 LEFT JOIN accounts a ON a.id = t.account_id

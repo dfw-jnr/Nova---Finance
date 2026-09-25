@@ -155,6 +155,17 @@
           <label for="txn-notes">Notes</label>
           <textarea id="txn-notes" name="notes" maxlength="2000"></textarea>
         </div>
+        <div class="receipt-box">
+          <div class="receipt-box__actions">
+            <label class="btn btn--ghost" style="width:auto;cursor:pointer">
+              Scan / upload receipt
+              <input id="receipt-input" type="file" accept="image/*" capture="environment" hidden />
+            </label>
+            <button type="button" class="btn btn--ghost" id="receipt-clear" style="width:auto">Remove</button>
+          </div>
+          <img id="receipt-preview" class="receipt-preview" alt="Receipt preview" hidden />
+          <p id="receipt-status" class="receipt-status" aria-live="polite"></p>
+        </div>
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" data-modal-dismiss>Cancel</button>
           <button type="submit" class="btn btn--primary" style="width:auto">Save</button>
@@ -179,6 +190,10 @@
         <div><dt>Notes</dt><dd id="detail-notes"></dd></div>
         <div><dt>Created</dt><dd id="detail-created"></dd></div>
       </dl>
+      <div id="detail-receipt-wrap" class="receipt-box" hidden>
+        <p class="receipt-status">Receipt</p>
+        <img id="detail-receipt" class="receipt-preview" alt="Attached receipt" />
+      </div>
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" id="btn-edit-txn" style="width:auto">Edit</button>
         <button type="button" class="btn btn--danger" id="btn-delete-txn" style="width:auto">Delete</button>
@@ -290,11 +305,12 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
 
-  <script src="/assets/js/api.js?v=8" defer></script>
-  <script src="/assets/js/ui.js?v=8" defer></script>
-  <script src="/assets/js/transactions.js?v=8" defer></script>
-  <script src="/assets/js/charts.js?v=8" defer></script>
-  <script src="/assets/js/app.js?v=8" defer></script>
+  <script src="/assets/js/api.js?v=9" defer></script>
+  <script src="/assets/js/ui.js?v=9" defer></script>
+  <script src="/assets/js/transactions.js?v=9" defer></script>
+  <script src="/assets/js/charts.js?v=9" defer></script>
+  <script src="/assets/js/receipt.js?v=9" defer></script>
+  <script src="/assets/js/app.js?v=9" defer></script>
   <script>
     document.querySelector('[data-nav-jump="transactions"]')?.addEventListener('click', () => {
       document.querySelector('[data-nav="transactions"]')?.click();
