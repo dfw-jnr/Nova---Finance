@@ -190,11 +190,11 @@
   color: var(--text-2);
 }
 
-/* Modal — occasional, centered, scale 0.96 */
+/* Modal — above bottom nav / FAB so Save is never covered */
 .modal {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 200;
   display: none;
   place-items: end center;
   padding: var(--space-3);
@@ -212,13 +212,15 @@
 .modal__dialog {
   position: relative; z-index: 2;
   width: min(100%, 26rem);
-  max-height: min(90dvh, 40rem);
+  max-height: min(88dvh, 40rem);
   overflow: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--bg-elev);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
+  padding-bottom: 0;
   opacity: 0;
   transform: scale(0.96) translateY(8px);
   transition: opacity var(--duration-modal) var(--ease-out), transform var(--duration-modal) var(--ease-out);
@@ -234,7 +236,22 @@
 }
 .modal__head h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; }
 .modal__actions {
-  display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-4);
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin: var(--space-4) calc(var(--space-5) * -1) 0;
+  padding: var(--space-3) var(--space-5) calc(var(--space-5) + var(--safe-b));
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.12);
+}
+body.modal-open .bottom-nav,
+body.modal-open .btn--fab {
+  visibility: hidden;
+  pointer-events: none;
 }
 .type-toggle {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-bottom: var(--space-4);
@@ -261,7 +278,7 @@
 
 /* Command palette — NO open/close animation */
 .palette {
-  position: fixed; inset: 0; z-index: 70;
+  position: fixed; inset: 0; z-index: 210;
   display: none;
   place-items: start center;
   padding: 12vh var(--space-4) var(--space-4);

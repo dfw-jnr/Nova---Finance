@@ -1,5 +1,5 @@
 /**
- * Receipt capture + optional on-device OCR (Tesseract.js loaded on demand).
+ * Receipt capture + optional on-device OCR (Tesseract loaded only when requested).
  */
 (function (global) {
   'use strict';
@@ -15,11 +15,13 @@
     pendingReceipt = null;
     const preview = document.getElementById('receipt-preview');
     const status = document.getElementById('receipt-status');
+    const ocrBtn = document.getElementById('receipt-ocr');
     if (preview) {
       preview.hidden = true;
       preview.removeAttribute('src');
     }
     if (status) status.textContent = '';
+    if (ocrBtn) ocrBtn.hidden = true;
   }
 
   function setPreview(dataUrl) {
@@ -74,7 +76,6 @@
       const n = parseFloat(m[1].replace(',', '.'));
       if (!Number.isNaN(n) && n > 0 && n < 100000) amounts.push(n);
     }
-    // Prefer the largest amount as a "total" heuristic
     const amount = amounts.length ? Math.max(...amounts).toFixed(2) : '';
 
     let date = '';
@@ -87,7 +88,6 @@
       }
     }
 
-    // Merchant: first substantial line without only numbers/symbols
     let merchant = '';
     for (const line of lines.slice(0, 8)) {
       if (line.length < 3) continue;
@@ -107,7 +107,6 @@
     if (parts[0].length === 4) {
       return `${parts[0]}-${parts[1]}-${parts[2]}`;
     }
-    // dd-mm-yyyy or dd-mm-yy
     let y = parts[2];
     if (y.length === 2) y = '20' + y;
     return `${y}-${parts[1]}-${parts[0]}`;
@@ -135,10 +134,10 @@
         logger: () => {},
       });
       const parsed = parseReceiptText(result?.data?.text || '');
-      setStatus(parsed.amount ? 'Receipt scanned — check the fields' : 'Receipt attached — fill amount if needed');
+      setStatus(parsed.amount ? 'Fields filled — check before saving' : 'Could not read amount — fill manually');
       return parsed;
     } catch {
-      setStatus('Receipt attached (scan unavailable)');
+      setStatus('Scan unavailable — fill fields manually');
       return { amount: '', merchant: '', date: '', raw: '' };
     }
   }
@@ -161,21 +160,23 @@
     if (!file || !file.type.startsWith('image/')) {
       throw new Error('Please choose a receipt photo');
     }
-    setStatus('Preparing image…');
+    setStatus('Attaching…');
     const dataUrl = await compressImage(file);
     setPreview(dataUrl);
-    const parsed = await runOcr(dataUrl);
-    applyParsed(parsed);
     pendingReceipt = {
       base64: dataUrl,
-      ocr: parsed.raw || '',
+      ocr: '',
       mime: 'image/jpeg',
     };
+    const ocrBtn = document.getElementById('receipt-ocr');
+    if (ocrBtn) ocrBtn.hidden = false;
+    setStatus('Receipt attached — Save, or Auto-fill from photo');
   }
 
   function bind() {
     const input = document.getElementById('receipt-input');
     const clearBtn = document.getElementById('receipt-clear');
+    const ocrBtn = document.getElementById('receipt-ocr');
     if (!input) return;
 
     input.addEventListener('change', async () => {
@@ -187,6 +188,18 @@
       } catch (e) {
         setStatus(e.message || 'Could not use that image');
         global.NovaUI?.toast(e.message || 'Could not use that image');
+      }
+    });
+
+    ocrBtn?.addEventListener('click', async () => {
+      if (!pendingReceipt?.base64) return;
+      ocrBtn.disabled = true;
+      try {
+        const parsed = await runOcr(pendingReceipt.base64);
+        applyParsed(parsed);
+        pendingReceipt.ocr = parsed.raw || '';
+      } finally {
+        ocrBtn.disabled = false;
       }
     });
 

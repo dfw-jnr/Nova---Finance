@@ -72,11 +72,19 @@
     if (state === 'synced') setTimeout(() => setStatus(navigator.onLine ? 'online' : 'offline'), 1600);
   }
 
+  function syncModalBodyClass() {
+    const open = !!document.querySelector('.modal.is-open, .palette.is-open');
+    document.body.classList.toggle('modal-open', open);
+  }
+
   function openModal(id) {
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.hidden = false;
-    requestAnimationFrame(() => modal.classList.add('is-open'));
+    requestAnimationFrame(() => {
+      modal.classList.add('is-open');
+      syncModalBodyClass();
+    });
     const focusable = modal.querySelector('input, select, button, textarea');
     setTimeout(() => focusable?.focus(), reduce() ? 0 : 20);
   }
@@ -85,6 +93,7 @@
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.classList.remove('is-open');
+    syncModalBodyClass();
     setTimeout(() => { modal.hidden = true; }, reduce() ? 0 : 250);
   }
 
@@ -124,6 +133,7 @@
     if (!root) return;
     root.classList.add('is-open');
     root.hidden = false;
+    syncModalBodyClass();
     paletteFiltered = COMMANDS.slice();
     paletteActive = 0;
     renderPalette();
@@ -136,6 +146,7 @@
     if (!root) return;
     root.classList.remove('is-open');
     root.hidden = true;
+    syncModalBodyClass();
   }
 
   function runCommand(id) {

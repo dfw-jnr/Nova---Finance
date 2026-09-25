@@ -27,10 +27,62 @@
     if (name === 'more') loadMore();
   }
 
+  function paintHome(analytics, txns) {
+    state.transactions = txns;
+    state.currency = analytics.currency || state.user?.currency || state.currency;
+    $('#hero-balance').textContent = NovaUI.money(analytics.total_balance, state.currency);
+    $('#stat-income').textContent = NovaUI.money(analytics.month.income, state.currency);
+    $('#stat-expenses').textContent = NovaUI.money(analytics.month.expenses, state.currency);
+    const savings = Number(analytics.month.income) - Number(analytics.month.expenses);
+    $('#stat-savings').textContent = NovaUI.money(Math.max(savings, 0), state.currency);
+    NovaTx.renderList($('#home-txns'), txns.slice(0, 6), state.currency, openDetail);
+  }
+
+  function readHomeCache() {
+    try {
+      const raw = sessionStorage.getItem('nova_home_v1');
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data?.ts || Date.now() - data.ts > 120000) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeHomeCache(analytics, txns) {
+    try {
+      sessionStorage.setItem('nova_home_v1', JSON.stringify({
+        ts: Date.now(),
+        analytics,
+        txns,
+      }));
+    } catch (_) {}
+  }
+
+  let chartsReady = null;
+  function ensureCharts() {
+    if (window.NovaCharts) return Promise.resolve();
+    if (chartsReady) return chartsReady;
+    chartsReady = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = '/assets/js/charts.js?v=11';
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Charts failed to load'));
+      document.head.appendChild(s);
+    });
+    return chartsReady;
+  }
+
   async function loadHome(preloaded) {
     const greet = $('#greet-text');
     if (greet) {
       greet.innerHTML = `${NovaUI.greeting()}<strong>${NovaTx.escapeHtml(state.user?.name?.split(' ')[0] || 'there')}</strong>`;
+    }
+    const cached = readHomeCache();
+    if (!preloaded?.home && cached?.analytics) {
+      paintHome(cached.analytics, cached.txns || []);
     }
     try {
       let analytics;
@@ -48,16 +100,10 @@
           NovaAPI.transactions('limit=6'),
         ]);
       }
-      state.transactions = txns;
-      state.currency = analytics.currency || state.user.currency;
-      $('#hero-balance').textContent = NovaUI.money(analytics.total_balance, state.currency);
-      $('#stat-income').textContent = NovaUI.money(analytics.month.income, state.currency);
-      $('#stat-expenses').textContent = NovaUI.money(analytics.month.expenses, state.currency);
-      const savings = Number(analytics.month.income) - Number(analytics.month.expenses);
-      $('#stat-savings').textContent = NovaUI.money(Math.max(savings, 0), state.currency);
-      NovaTx.renderList($('#home-txns'), txns.slice(0, 6), state.currency, openDetail);
+      paintHome(analytics, txns);
+      writeHomeCache(analytics, txns);
     } catch (e) {
-      NovaUI.toast(e.message || 'Could not load dashboard');
+      if (!cached) NovaUI.toast(e.message || 'Could not load dashboard');
     }
   }
 
@@ -84,6 +130,7 @@
   async function loadAnalytics() {
     const panel = $('#analytics-panel');
     try {
+      await ensureCharts();
       const data = await NovaAPI.analytics(state.range);
       state.currency = data.currency;
       $('#an-savings').textContent = data.averages.savings_rate + '%';
@@ -585,6 +632,16 @@
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js').catch(() => {});
       }
+
+      // Keep Render free instance warm while the app is open
+      const ping = () => {
+        if (document.visibilityState !== 'visible') return;
+        fetch('/api/health', { cache: 'no-store', credentials: 'omit' }).catch(() => {});
+      };
+      setInterval(ping, 7 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') ping();
+      });
     } catch (e) {
       console.error(e);
       NovaUI.toast('Unable to start app');

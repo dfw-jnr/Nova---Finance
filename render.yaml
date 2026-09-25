@@ -3,7 +3,7 @@ services:
     name: nova-finance
     runtime: docker
     plan: free
-    healthCheckPath: /login.php
+    healthCheckPath: /api/health
     envVars:
       - key: APP_ENV
         value: production

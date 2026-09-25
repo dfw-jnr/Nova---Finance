@@ -161,6 +161,7 @@
               Scan / upload receipt
               <input id="receipt-input" type="file" accept="image/*" capture="environment" hidden />
             </label>
+            <button type="button" class="btn btn--ghost" id="receipt-ocr" style="width:auto" hidden>Auto-fill from photo</button>
             <button type="button" class="btn btn--ghost" id="receipt-clear" style="width:auto">Remove</button>
           </div>
           <img id="receipt-preview" class="receipt-preview" alt="Receipt preview" hidden />
@@ -305,12 +306,11 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
 
-  <script src="/assets/js/api.js?v=10" defer></script>
-  <script src="/assets/js/ui.js?v=10" defer></script>
-  <script src="/assets/js/transactions.js?v=10" defer></script>
-  <script src="/assets/js/charts.js?v=10" defer></script>
-  <script src="/assets/js/receipt.js?v=10" defer></script>
-  <script src="/assets/js/app.js?v=10" defer></script>
+  <script src="/assets/js/api.js?v=11" defer></script>
+  <script src="/assets/js/ui.js?v=11" defer></script>
+  <script src="/assets/js/transactions.js?v=11" defer></script>
+  <script src="/assets/js/receipt.js?v=11" defer></script>
+  <script src="/assets/js/app.js?v=11" defer></script>
   <script>
     document.querySelector('[data-nav-jump="transactions"]')?.addEventListener('click', () => {
       document.querySelector('[data-nav="transactions"]')?.click();

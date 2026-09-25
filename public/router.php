@@ -2,10 +2,18 @@
 declare(strict_types=1);
 
 /**
- * Router for PHP built-in server:
- * php -S localhost:8080 router.php
+ * Router for Apache / PHP built-in server.
  */
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/');
+
+// Ultra-light keep-alive / health (no DB, no session)
+if ($uri === '/api/health' || $uri === '/api/health/') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo '{"ok":true}';
+    return true;
+}
+
 $file = __DIR__ . $uri;
 
 if ($uri !== '/' && is_file($file) && !str_ends_with($uri, '.php')) {
@@ -26,7 +34,6 @@ if ($uri !== '/' && is_file($file) && !str_ends_with($uri, '.php')) {
     if (isset($types[$ext])) {
         header('Content-Type: ' . $types[$ext]);
         header('X-Content-Type-Options: nosniff');
-        // Versioned assets can be cached hard; others briefly.
         if (!empty($_GET['v']) || in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'woff2', 'ico'], true)) {
             header('Cache-Control: public, max-age=31536000, immutable');
         } else {
