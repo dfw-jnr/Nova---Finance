@@ -170,6 +170,11 @@
         method: 'POST',
         body: { rows },
       }),
+    remapImport: (importId, columnMap) =>
+      request('/api/import/?id=' + encodeURIComponent(importId) + '&action=remap', {
+        method: 'POST',
+        body: { column_map: columnMap },
+      }),
     exportUrl: (format = 'csv') => '/api/export/?format=' + encodeURIComponent(format),
     logoutAll: () => request('/api/auth/?action=logout_all', { method: 'POST', body: {} }),
     deleteAccount: (password) =>

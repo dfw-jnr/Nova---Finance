@@ -195,10 +195,14 @@ final class Database
                   user_id INTEGER NOT NULL,
                   filename TEXT NOT NULL,
                   status TEXT NOT NULL DEFAULT \'pending\',
+                  column_map_json TEXT NULL,
+                  headers_json TEXT NULL,
                   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )'
             );
+            self::sqliteAddColumnIfMissing('imports', 'column_map_json', 'TEXT NULL');
+            self::sqliteAddColumnIfMissing('imports', 'headers_json', 'TEXT NULL');
             self::$pdo->exec(
                 'CREATE TABLE IF NOT EXISTS import_rows (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -242,12 +246,16 @@ final class Database
               user_id BIGINT UNSIGNED NOT NULL,
               filename VARCHAR(255) NOT NULL,
               status VARCHAR(32) NOT NULL DEFAULT \'pending\',
+              column_map_json JSON NULL,
+              headers_json JSON NULL,
               created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               PRIMARY KEY (id),
               KEY idx_imports_user (user_id),
               CONSTRAINT fk_imports_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
         );
+        self::mysqlAddColumnIfMissing('imports', 'column_map_json', 'JSON NULL');
+        self::mysqlAddColumnIfMissing('imports', 'headers_json', 'JSON NULL');
         self::$pdo->exec(
             'CREATE TABLE IF NOT EXISTS import_rows (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

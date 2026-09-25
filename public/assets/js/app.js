@@ -239,7 +239,7 @@
     if (chartsReady) return chartsReady;
     chartsReady = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = '/assets/js/charts.js?v=15';
+      s.src = '/assets/js/charts.js?v=16';
       s.async = true;
       s.onload = () => resolve();
       s.onerror = () => reject(new Error('Charts failed to load'));
@@ -967,6 +967,8 @@
       state.importSession = null;
       $('#import-preview').hidden = true;
       $('#import-preview').innerHTML = '';
+      const mapBox = $('#import-map');
+      if (mapBox) { mapBox.hidden = true; }
       $('#import-file').value = '';
       $('#btn-import-commit').disabled = true;
       populateSelects();
@@ -984,10 +986,37 @@
         NovaUI.toast('Parsing CSV…');
         const data = await NovaAPI.importCsv(fd);
         state.importSession = data;
+        renderImportMap(data);
         renderImportPreview(data);
         $('#btn-import-commit').disabled = false;
       } catch (err) {
         NovaUI.toast(err.message || 'Import preview failed');
+      }
+    });
+
+    $('#btn-import-remap')?.addEventListener('click', async () => {
+      const session = state.importSession;
+      const importId = session?.import?.id ?? session?.import_id;
+      if (!importId) return;
+      const columnMap = {
+        date: $('#map-date')?.value || '',
+        amount: $('#map-amount')?.value || '',
+        description: $('#map-desc')?.value || null,
+      };
+      if (!columnMap.date || !columnMap.amount) {
+        NovaUI.toast('Pick Date and Amount columns');
+        return;
+      }
+      if (!columnMap.description) columnMap.description = null;
+      try {
+        NovaUI.toast('Re-parsing…');
+        const data = await NovaAPI.remapImport(importId, columnMap);
+        state.importSession = data;
+        renderImportMap(data);
+        renderImportPreview(data);
+        NovaUI.toast('Mapping applied');
+      } catch (err) {
+        NovaUI.toast(err.message || 'Could not apply mapping');
       }
     });
 
@@ -1011,6 +1040,37 @@
     });
   }
 
+  function renderImportMap(data) {
+    const box = $('#import-map');
+    if (!box) return;
+    const headers = data.headers || [];
+    const map = data.column_map || {};
+    if (!headers.length) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const opts = headers.map((h) =>
+      `<option value="${NovaTx.escapeHtml(h)}">${NovaTx.escapeHtml(h)}</option>`
+    ).join('');
+    const none = '<option value="">— none —</option>';
+    const dateSel = $('#map-date');
+    const amtSel = $('#map-amount');
+    const descSel = $('#map-desc');
+    if (dateSel) {
+      dateSel.innerHTML = opts;
+      if (map.date) dateSel.value = map.date;
+    }
+    if (amtSel) {
+      amtSel.innerHTML = opts;
+      if (map.amount) amtSel.value = map.amount;
+    }
+    if (descSel) {
+      descSel.innerHTML = none + opts;
+      descSel.value = map.description || '';
+    }
+  }
+
   function renderImportPreview(data) {
     const box = $('#import-preview');
     const rows = data.rows || [];
@@ -1022,11 +1082,13 @@
     box.hidden = false;
     box.innerHTML = rows.map((r) => {
       const dup = r.duplicate_of || r.suggested_action === 'keep';
-      const def = r.suggested_action || (dup ? 'keep' : 'import');
-      return `<div class="import-row${dup ? ' is-dup' : ''}" data-import-row="${r.id}" data-default-action="${def}">
+      const invalid = !r.txn_date || !r.amount;
+      const def = r.suggested_action || (dup ? 'keep' : (invalid ? 'skip' : 'import'));
+      return `<div class="import-row${dup ? ' is-dup' : ''}${invalid ? ' is-invalid-row' : ''}" data-import-row="${r.id}" data-default-action="${def}">
         <div><strong>${NovaTx.escapeHtml(r.merchant || r.name || 'Row')}</strong>
-        <span class="sub">${NovaTx.escapeHtml(r.txn_date || '')} · ${NovaUI.money(r.amount, state.currency, false, r.type || 'expense')}</span>
-        ${dup ? '<span class="sub">Possible duplicate</span>' : ''}</div>
+        <span class="sub">${NovaTx.escapeHtml(r.txn_date || '—')} · ${r.amount != null ? NovaUI.money(r.amount, state.currency, false, r.type || 'expense') : '—'}</span>
+        ${dup ? '<span class="sub">Possible duplicate</span>' : ''}
+        ${invalid ? '<span class="sub">Needs column mapping</span>' : ''}</div>
         <select aria-label="Import action">
           <option value="import"${def === 'import' ? ' selected' : ''}>Import anyway</option>
           <option value="keep"${def === 'keep' ? ' selected' : ''}>Keep existing</option>

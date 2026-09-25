@@ -396,6 +396,14 @@
         <label for="import-account">Default account</label>
         <select id="import-account"></select>
       </div>
+      <div id="import-map" class="import-map" hidden>
+        <p class="label">Column mapping</p>
+        <p class="sub" style="margin-bottom:.75rem">Confirm which CSV columns are Date, Amount, and Description.</p>
+        <div class="field"><label for="map-date">Date</label><select id="map-date"></select></div>
+        <div class="field"><label for="map-amount">Amount</label><select id="map-amount"></select></div>
+        <div class="field"><label for="map-desc">Description</label><select id="map-desc"></select></div>
+        <button type="button" class="btn btn--ghost" id="btn-import-remap" style="width:auto;margin-bottom:1rem">Apply mapping</button>
+      </div>
       <div id="import-preview" class="import-preview" hidden></div>
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" data-modal-dismiss>Cancel</button>
@@ -428,11 +436,11 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
 
-  <script src="/assets/js/api.js?v=15" defer></script>
-  <script src="/assets/js/ui.js?v=15" defer></script>
-  <script src="/assets/js/transactions.js?v=15" defer></script>
-  <script src="/assets/js/receipt.js?v=15" defer></script>
-  <script src="/assets/js/app.js?v=15" defer></script>
+  <script src="/assets/js/api.js?v=16" defer></script>
+  <script src="/assets/js/ui.js?v=16" defer></script>
+  <script src="/assets/js/transactions.js?v=16" defer></script>
+  <script src="/assets/js/receipt.js?v=16" defer></script>
+  <script src="/assets/js/app.js?v=16" defer></script>
   <script>
     document.addEventListener('click', (e) => {
       const t = e.target;
