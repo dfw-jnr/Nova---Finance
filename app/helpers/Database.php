@@ -130,6 +130,11 @@ final class Database
     /** Additive migration so existing MySQL/SQLite DBs get receipts without wipe. */
     private static function ensureReceiptsTable(): void
     {
+        $flag = dirname(__DIR__, 2) . '/storage/.receipts_ready';
+        if (is_file($flag)) {
+            return;
+        }
+
         if (self::isSqlite()) {
             self::$pdo->exec(
                 'CREATE TABLE IF NOT EXISTS receipts (
@@ -144,11 +149,13 @@ final class Database
                   FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
                 )'
             );
+            @file_put_contents($flag, '1');
             return;
         }
 
         $stmt = self::$pdo->query("SHOW TABLES LIKE 'receipts'");
         if ($stmt && $stmt->fetch()) {
+            @file_put_contents($flag, '1');
             return;
         }
         self::$pdo->exec(
@@ -167,6 +174,7 @@ final class Database
               CONSTRAINT fk_receipt_txn FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
         );
+        @file_put_contents($flag, '1');
     }
 
     public static function pdo(): \PDO

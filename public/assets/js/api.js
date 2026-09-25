@@ -51,7 +51,7 @@
   async function bootstrapAuth() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     if (meta?.content) csrf = meta.content;
-    const data = await request('/api/auth/', { method: 'GET' });
+    const data = await request('/api/boot/');
     if (data.csrf) csrf = data.csrf;
     return data;
   }
@@ -151,5 +151,6 @@
     deleteRecurring: (id) => request('/api/recurring/?id=' + id, { method: 'DELETE', body: {} }),
     settings: () => request('/api/settings/'),
     saveTheme: (theme) => request('/api/settings/', { method: 'POST', body: { theme } }),
+    authCheck: () => request('/api/auth/'),
   };
 })(window);

@@ -27,16 +27,27 @@
     if (name === 'more') loadMore();
   }
 
-  async function loadHome() {
+  async function loadHome(preloaded) {
     const greet = $('#greet-text');
     if (greet) {
       greet.innerHTML = `${NovaUI.greeting()}<strong>${NovaTx.escapeHtml(state.user?.name?.split(' ')[0] || 'there')}</strong>`;
     }
     try {
-      const [analytics, txns] = await Promise.all([
-        NovaAPI.analytics('30D'),
-        NovaAPI.transactions(),
-      ]);
+      let analytics;
+      let txns;
+      if (preloaded?.home) {
+        analytics = {
+          total_balance: preloaded.home.total_balance,
+          month: preloaded.home.month,
+          currency: preloaded.home.currency || state.currency,
+        };
+        txns = preloaded.home.recent || [];
+      } else {
+        [analytics, txns] = await Promise.all([
+          NovaAPI.analytics('30D'),
+          NovaAPI.transactions('limit=6'),
+        ]);
+      }
       state.transactions = txns;
       state.currency = analytics.currency || state.user.currency;
       $('#hero-balance').textContent = NovaUI.money(analytics.total_balance, state.currency);
@@ -238,10 +249,18 @@
     NovaUI.openModal('modal-detail');
   }
 
-  async function populateSelects() {
+  async function populateSelects(force = false) {
+    if (!force && state.accounts.length && state.categories.length) {
+      fillSelects(state.accounts, state.categories);
+      return;
+    }
     const [accounts, categories] = await Promise.all([NovaAPI.accounts(), NovaAPI.categories()]);
     state.accounts = accounts;
     state.categories = categories;
+    fillSelects(accounts, categories);
+  }
+
+  function fillSelects(accounts, categories) {
     const accSel = $('#txn-account');
     const catSel = $('#txn-category');
     const budCat = $('#budget-category');
@@ -536,14 +555,21 @@
       }
       state.user = auth.user;
       state.currency = auth.user.currency || 'EUR';
+      if (auth.accounts) state.accounts = auth.accounts;
+      if (auth.categories) state.categories = auth.categories;
       if (auth.recurring_posted > 0) {
         NovaUI.toast(`${auth.recurring_posted} recurring payment${auth.recurring_posted > 1 ? 's' : ''} posted`);
       }
       bindNav();
       bindForms();
       NovaReceipt?.bind?.();
-      await populateSelects();
-      showScreen('home');
+      if (state.accounts.length && state.categories.length) {
+        fillSelects(state.accounts, state.categories);
+      }
+      // Paint home from the same boot payload — no extra round trips.
+      $$('.screen').forEach((el) => el.classList.toggle('is-active', el.dataset.screen === 'home'));
+      $$('.bottom-nav button').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.nav === 'home'));
+      await loadHome(auth);
 
       const sync = () => NovaAPI.syncPending(NovaUI.setStatus).then((r) => {
         if (r.synced) {

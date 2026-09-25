@@ -20,11 +20,17 @@ $method = Request::method();
 $body = Request::json();
 
 if ($method === 'GET') {
-    // Also materialize any due items when listing
-    try {
-        (new \Nova\Services\RecurringService())->materializeDue($userId, (string) $user['currency']);
-    } catch (Throwable $e) {
-        // listing still works
+    $dayKey = 'recurring_done_' . date('Y-m-d');
+    if (empty($_SESSION[$dayKey])) {
+        try {
+            (new \Nova\Services\RecurringService())->materializeDue($userId, (string) $user['currency']);
+            $_SESSION[$dayKey] = 1;
+        } catch (Throwable $e) {
+            // listing still works
+        }
+    }
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
     }
     Response::ok($repo->listForUser($userId));
 }

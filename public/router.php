@@ -8,7 +8,33 @@ declare(strict_types=1);
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '/');
 $file = __DIR__ . $uri;
 
-if ($uri !== '/' && is_file($file)) {
+if ($uri !== '/' && is_file($file) && !str_ends_with($uri, '.php')) {
+    $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+    $types = [
+        'css' => 'text/css; charset=utf-8',
+        'js' => 'application/javascript; charset=utf-8',
+        'json' => 'application/json; charset=utf-8',
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'svg' => 'image/svg+xml',
+        'webp' => 'image/webp',
+        'woff2' => 'font/woff2',
+        'ico' => 'image/x-icon',
+        'webmanifest' => 'application/manifest+json',
+    ];
+    if (isset($types[$ext])) {
+        header('Content-Type: ' . $types[$ext]);
+        header('X-Content-Type-Options: nosniff');
+        // Versioned assets can be cached hard; others briefly.
+        if (!empty($_GET['v']) || in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'woff2', 'ico'], true)) {
+            header('Cache-Control: public, max-age=31536000, immutable');
+        } else {
+            header('Cache-Control: public, max-age=300');
+        }
+        readfile($file);
+        return true;
+    }
     return false;
 }
 

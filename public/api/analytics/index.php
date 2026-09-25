@@ -12,6 +12,9 @@ use Nova\Services\AuthService;
 $auth = new AuthService();
 $user = $auth->requireUser();
 $userId = (int) $user['id'];
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 $range = strtoupper((string) ($_GET['range'] ?? '30D'));
 if (!in_array($range, ['7D', '30D', '90D', '1Y'], true)) {
     $range = '30D';

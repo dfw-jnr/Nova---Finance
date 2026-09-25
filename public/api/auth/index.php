@@ -19,16 +19,24 @@ if ($method === 'GET') {
     $user = $auth->user();
     $posted = 0;
     if ($user) {
-        try {
-            $posted = (new RecurringService())->materializeDue((int) $user['id'], (string) $user['currency']);
-        } catch (Throwable $e) {
-            $posted = 0;
+        $dayKey = 'recurring_done_' . date('Y-m-d');
+        if (empty($_SESSION[$dayKey])) {
+            try {
+                $posted = (new RecurringService())->materializeDue((int) $user['id'], (string) $user['currency']);
+            } catch (Throwable $e) {
+                $posted = 0;
+            }
+            $_SESSION[$dayKey] = 1;
         }
+    }
+    $csrf = Csrf::token();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
     }
     Response::ok([
         'authenticated' => (bool) $user,
         'user' => $user,
-        'csrf' => Csrf::token(),
+        'csrf' => $csrf,
         'recurring_posted' => $posted,
     ]);
 }

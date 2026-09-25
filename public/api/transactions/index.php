@@ -30,6 +30,9 @@ try {
     }
 
     if ($method === 'GET') {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
         $filters = [
             'type' => $_GET['type'] ?? null,
             'category_id' => $_GET['category_id'] ?? null,
@@ -37,6 +40,7 @@ try {
             'to' => $_GET['to'] ?? null,
             'q' => $_GET['q'] ?? null,
             'sort' => $_GET['sort'] ?? 'date_desc',
+            'limit' => isset($_GET['limit']) ? (int) $_GET['limit'] : 100,
         ];
         Response::ok($repo->list($userId, $filters));
     }
