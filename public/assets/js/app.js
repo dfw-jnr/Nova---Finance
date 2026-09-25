@@ -168,16 +168,47 @@
 
   async function loadMore() {
     const el = $('#account-list');
+    const recEl = $('#recurring-list');
     try {
-      const accounts = await NovaAPI.accounts();
+      const [accounts, recurring] = await Promise.all([NovaAPI.accounts(), NovaAPI.recurring()]);
       state.accounts = accounts;
       el.innerHTML = accounts.map((a) =>
         `<div class="card-row"><div class="card-row__top"><span class="card-row__name">${NovaTx.escapeHtml(a.name)}</span>
         <span class="card-row__pct">${a.type}</span></div>
         <div class="card-row__foot"><span>${NovaUI.money(a.balance, a.currency)}</span><span>${a.currency}</span></div></div>`
-      ).join('');
+      ).join('') || '<p class="empty" style="border:0;padding:1rem 0">No accounts</p>';
+
+      if (recEl) {
+        if (!recurring.length) {
+          recEl.innerHTML = '<p style="color:var(--text-3);font-size:.875rem;padding:.5rem 0">No recurring items yet</p>';
+        } else {
+          recEl.innerHTML = recurring.map((r) =>
+            `<div class="card-row" data-recurring-id="${r.id}">
+              <div class="card-row__top"><span class="card-row__name">${NovaTx.escapeHtml(r.name)}</span>
+              <span class="card-row__pct">${r.frequency}</span></div>
+              <div class="card-row__foot">
+                <span>${NovaUI.money(r.amount, r.currency || state.currency, false, r.type)} · next ${r.next_date}</span>
+                <button type="button" class="chip" data-stop-recurring="${r.id}">Stop</button>
+              </div>
+            </div>`
+          ).join('');
+          recEl.querySelectorAll('[data-stop-recurring]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              if (!confirm('Stop this recurring item?')) return;
+              try {
+                await NovaAPI.deleteRecurring(btn.dataset.stopRecurring);
+                NovaUI.toast('Stopped');
+                loadMore();
+              } catch (e) {
+                NovaUI.toast(e.message);
+              }
+            });
+          });
+        }
+      }
     } catch {
       el.innerHTML = '';
+      if (recEl) recEl.innerHTML = '';
     }
   }
 
@@ -192,6 +223,7 @@
     $('#detail-notes').textContent = row.notes || row.description || '—';
     $('#detail-created').textContent = row.created_at || '—';
     modal.dataset.id = row.id;
+    modal._row = row;
     NovaUI.openModal('modal-detail');
   }
 
@@ -202,18 +234,31 @@
     const accSel = $('#txn-account');
     const catSel = $('#txn-category');
     const budCat = $('#budget-category');
+    const recAcc = $('#rec-account');
+    const recCat = $('#rec-category');
     if (accSel) {
       accSel.innerHTML = accounts.map((a) => `<option value="${a.id}">${NovaTx.escapeHtml(a.name)}</option>`).join('');
     }
     const catOpts = categories.map((c) => `<option value="${c.id}">${NovaTx.escapeHtml(c.name)}</option>`).join('');
     if (catSel) catSel.innerHTML = '<option value="">Select</option>' + catOpts;
     if (budCat) budCat.innerHTML = catOpts;
+    if (recAcc) recAcc.innerHTML = accounts.map((a) => `<option value="${a.id}">${NovaTx.escapeHtml(a.name)}</option>`).join('');
+    if (recCat) recCat.innerHTML = '<option value="">Select</option>' + catOpts;
+  }
+
+  function resetTxnForm() {
+    const form = $('#form-txn');
+    form?.reset();
+    $('#txn-edit-id').value = '';
+    $('#txn-title').textContent = 'Add Transaction';
+    $('#txn-date').value = new Date().toISOString().slice(0, 10);
   }
 
   function bindForms() {
     $('#form-txn')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);
+      const editId = fd.get('id');
       const payload = {
         type: fd.get('type'),
         amount: fd.get('amount'),
@@ -224,7 +269,6 @@
         description: fd.get('description'),
         notes: fd.get('notes'),
       };
-      // client validation
       $$('#form-txn .field').forEach((f) => f.classList.remove('is-invalid'));
       let ok = true;
       if (!payload.merchant) { $('#field-merchant').classList.add('is-invalid'); ok = false; }
@@ -233,12 +277,16 @@
       }
       if (!ok) return;
       try {
-        const saved = await NovaAPI.createTransaction(payload);
-        NovaUI.toast(saved.pending ? 'Saved offline — will sync' : 'Transaction saved');
-        if (!navigator.onLine) NovaUI.setStatus('offline');
+        if (editId) {
+          await NovaAPI.updateTransaction(editId, payload);
+          NovaUI.toast('Transaction updated');
+        } else {
+          const saved = await NovaAPI.createTransaction(payload);
+          NovaUI.toast(saved.pending ? 'Saved offline — will sync' : 'Transaction saved');
+          if (!navigator.onLine) NovaUI.setStatus('offline');
+        }
         NovaUI.closeModal('modal-txn');
-        e.target.reset();
-        $('#txn-date').value = new Date().toISOString().slice(0, 10);
+        resetTxnForm();
         showScreen($('.bottom-nav button.is-active')?.dataset.nav || 'home');
       } catch (err) {
         NovaUI.toast(err.message);
@@ -298,6 +346,44 @@
       }
     });
 
+    $('#form-password')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        await NovaAPI.changePassword({
+          current_password: fd.get('current_password'),
+          new_password: fd.get('new_password'),
+        });
+        NovaUI.toast('Password updated');
+        NovaUI.closeModal('modal-password');
+        e.target.reset();
+      } catch (err) {
+        NovaUI.toast(err.message);
+      }
+    });
+
+    $('#form-recurring')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        await NovaAPI.createRecurring({
+          name: fd.get('name'),
+          amount: fd.get('amount'),
+          type: fd.get('type'),
+          frequency: fd.get('frequency'),
+          next_date: fd.get('next_date'),
+          category_id: fd.get('category_id'),
+          account_id: fd.get('account_id'),
+        });
+        NovaUI.toast('Recurring created');
+        NovaUI.closeModal('modal-recurring');
+        e.target.reset();
+        loadMore();
+      } catch (err) {
+        NovaUI.toast(err.message);
+      }
+    });
+
     $('#btn-delete-txn')?.addEventListener('click', async () => {
       const id = $('#modal-detail').dataset.id;
       if (!id || String(id).startsWith('pending-')) return;
@@ -312,6 +398,29 @@
         NovaUI.toast(err.message);
       }
     });
+
+    $('#btn-edit-txn')?.addEventListener('click', async () => {
+      const modal = $('#modal-detail');
+      const row = modal._row;
+      if (!row || String(row.id).startsWith('pending-')) return;
+      await populateSelects();
+      $('#txn-edit-id').value = row.id;
+      $('#txn-title').textContent = 'Edit Transaction';
+      const typeRadio = document.querySelector(`#form-txn input[name="type"][value="${row.type}"]`);
+      if (typeRadio) typeRadio.checked = true;
+      $('#txn-amount').value = row.amount;
+      $('#txn-merchant').value = row.merchant;
+      $('#txn-category').value = row.category_id || '';
+      $('#txn-account').value = row.account_id;
+      $('#txn-date').value = row.txn_date;
+      $('#txn-notes').value = row.notes || '';
+      NovaUI.closeModal('modal-detail');
+      NovaUI.openModal('modal-txn');
+    });
+
+    $('#btn-export-csv')?.addEventListener('click', () => {
+      window.location.href = '/api/export/';
+    });
   }
 
   function bindNav() {
@@ -321,9 +430,19 @@
     $$('[data-open-add], .btn--fab').forEach((el) => {
       el.addEventListener('click', () => {
         populateSelects();
-        $('#txn-date').value = new Date().toISOString().slice(0, 10);
+        resetTxnForm();
         NovaUI.openModal('modal-txn');
       });
+    });
+    $$('[data-open-recurring-btn]').forEach((el) => {
+      el.addEventListener('click', async () => {
+        await populateSelects();
+        $('#rec-next').value = new Date().toISOString().slice(0, 10);
+        NovaUI.openModal('modal-recurring');
+      });
+    });
+    $$('[data-open-password-btn]').forEach((el) => {
+      el.addEventListener('click', () => NovaUI.openModal('modal-password'));
     });
     $$('[data-modal-dismiss]').forEach((el) => {
       el.addEventListener('click', () => {
@@ -400,6 +519,9 @@
       }
       state.user = auth.user;
       state.currency = auth.user.currency || 'EUR';
+      if (auth.recurring_posted > 0) {
+        NovaUI.toast(`${auth.recurring_posted} recurring payment${auth.recurring_posted > 1 ? 's' : ''} posted`);
+      }
       bindNav();
       bindForms();
       await populateSelects();

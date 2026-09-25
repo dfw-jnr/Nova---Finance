@@ -9,6 +9,7 @@ use Nova\Helpers\Request;
 use Nova\Helpers\Response;
 use Nova\Helpers\Validator;
 use Nova\Services\AuthService;
+use Nova\Services\RecurringService;
 
 $auth = new AuthService();
 $method = Request::method();
@@ -16,10 +17,19 @@ $body = Request::json();
 
 if ($method === 'GET') {
     $user = $auth->user();
+    $posted = 0;
+    if ($user) {
+        try {
+            $posted = (new RecurringService())->materializeDue((int) $user['id'], (string) $user['currency']);
+        } catch (Throwable $e) {
+            $posted = 0;
+        }
+    }
     Response::ok([
         'authenticated' => (bool) $user,
         'user' => $user,
         'csrf' => Csrf::token(),
+        'recurring_posted' => $posted,
     ]);
 }
 
@@ -30,6 +40,15 @@ if ($method === 'POST') {
         Csrf::requireValid(Request::bearerOrBodyCsrf($body));
         $auth->logout();
         Response::ok(['logged_out' => true]);
+    }
+
+    if ($action === 'change_password') {
+        Csrf::requireValid(Request::bearerOrBodyCsrf($body));
+        $user = $auth->requireUser();
+        $current = (string) ($body['current_password'] ?? '');
+        $new = (string) ($body['new_password'] ?? '');
+        $auth->changePassword((int) $user['id'], $current, $new);
+        Response::ok(['changed' => true]);
     }
 
     if ($action === 'register') {

@@ -87,6 +87,18 @@ final class AuthService
         return $user;
     }
 
+    public function changePassword(int $userId, string $current, string $new): void
+    {
+        $user = $this->users->findById($userId);
+        if (!$user || !password_verify($current, $user['password_hash'])) {
+            Response::error('INVALID_CREDENTIALS', 'Current password is incorrect.', 401);
+        }
+        if (strlen($new) < 8) {
+            Response::error('VALIDATION_ERROR', 'New password must be at least 8 characters.');
+        }
+        $this->users->updatePassword($userId, password_hash($new, PASSWORD_DEFAULT));
+    }
+
     private function loginSession(int $userId): void
     {
         if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {

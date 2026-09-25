@@ -137,8 +137,10 @@
     createGoal: (body) => request('/api/goals/', { method: 'POST', body }),
     contributeGoal: (id, amount) =>
       request('/api/goals/?id=' + id, { method: 'POST', body: { action: 'contribute', amount } }),
+    changePassword: (body) => request('/api/auth/?action=change_password', { method: 'POST', body }),
     recurring: () => request('/api/recurring/'),
     createRecurring: (body) => request('/api/recurring/', { method: 'POST', body }),
+    deleteRecurring: (id) => request('/api/recurring/?id=' + id, { method: 'DELETE', body: {} }),
     settings: () => request('/api/settings/'),
     saveTheme: (theme) => request('/api/settings/', { method: 'POST', body: { theme } }),
   };

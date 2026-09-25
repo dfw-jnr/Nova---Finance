@@ -31,4 +31,12 @@ final class UserRepository
         $row = $stmt->fetch();
         return $row ?: null;
     }
+
+    public function updatePassword(int $id, string $hash): void
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        );
+        $stmt->execute([$hash, $id]);
+    }
 }

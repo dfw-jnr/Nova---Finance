@@ -20,6 +20,12 @@ $method = Request::method();
 $body = Request::json();
 
 if ($method === 'GET') {
+    // Also materialize any due items when listing
+    try {
+        (new \Nova\Services\RecurringService())->materializeDue($userId, (string) $user['currency']);
+    } catch (Throwable $e) {
+        // listing still works
+    }
     Response::ok($repo->listForUser($userId));
 }
 
@@ -56,6 +62,16 @@ if ($method === 'POST') {
         'next_date' => $next,
     ]);
     Response::ok(['id' => $id], 201);
+}
+
+if ($method === 'DELETE') {
+    Csrf::requireValid(Request::bearerOrBodyCsrf($body));
+    $id = (int) ($_GET['id'] ?? $body['id'] ?? 0);
+    if ($id < 1 || !$repo->findOwned($id, $userId)) {
+        Response::error('NOT_FOUND', 'Recurring item not found.', 404);
+    }
+    $repo->deactivate($id, $userId);
+    Response::ok(['deleted' => true]);
 }
 
 Response::error('METHOD_NOT_ALLOWED', 'Method not allowed.', 405);

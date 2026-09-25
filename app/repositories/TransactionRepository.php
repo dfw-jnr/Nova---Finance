@@ -87,7 +87,8 @@ final class TransactionRepository
         }
 
         $sort = ($filters['sort'] ?? 'date_desc') === 'date_asc' ? 'ASC' : 'DESC';
-        $sql .= " ORDER BY t.txn_date $sort, t.id $sort LIMIT 200";
+        $limit = min(10000, max(1, (int) ($filters['limit'] ?? 200)));
+        $sql .= " ORDER BY t.txn_date $sort, t.id $sort LIMIT {$limit}";
 
         $stmt = Database::pdo()->prepare($sql);
         $stmt->execute($params);

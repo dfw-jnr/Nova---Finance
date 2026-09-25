@@ -41,4 +41,45 @@ final class RecurringRepository
         ]);
         return (int) Database::pdo()->lastInsertId();
     }
+
+    public function dueForUser(int $userId): array
+    {
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d');
+        $stmt = Database::pdo()->prepare(
+            'SELECT * FROM recurring_transactions
+             WHERE user_id = ? AND is_active = 1 AND next_date <= ?
+             ORDER BY next_date ASC'
+        );
+        $stmt->execute([$userId, $today]);
+        return $stmt->fetchAll();
+    }
+
+    public function findOwned(int $id, int $userId): ?array
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT * FROM recurring_transactions WHERE id = ? AND user_id = ? LIMIT 1'
+        );
+        $stmt->execute([$id, $userId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public function markRun(int $id, int $userId, string $nextDate): void
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE recurring_transactions
+             SET next_date = ?, last_run_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND user_id = ?'
+        );
+        $stmt->execute([$nextDate, $id, $userId]);
+    }
+
+    public function deactivate(int $id, int $userId): void
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE recurring_transactions SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND user_id = ?'
+        );
+        $stmt->execute([$id, $userId]);
+    }
 }
