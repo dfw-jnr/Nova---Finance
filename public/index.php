@@ -14,7 +14,7 @@ $csrf = Csrf::token();
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual" />
   <meta name="color-scheme" content="dark light" />
   <meta name="theme-color" content="#0B0D10" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -42,7 +42,7 @@ $csrf = Csrf::token();
     })();
   </script>
 </head>
-<body>
+<body class="app-body">
 <?php
 $html = file_get_contents(__DIR__ . '/app-shell.html');
 if ($html === false) {

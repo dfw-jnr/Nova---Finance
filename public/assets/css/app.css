@@ -23,7 +23,10 @@
   --radius-lg: 16px;
 
   --nav-h: 3.75rem;
+  /* constant() = older iOS; env() = modern — keep both so inset is stable */
+  --safe-b: constant(safe-area-inset-bottom);
   --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: constant(safe-area-inset-top);
   --safe-t: env(safe-area-inset-top, 0px);
 
   --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
@@ -82,11 +85,13 @@ html {
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
   color-scheme: dark light;
+  height: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100dvh;
+  min-height: 100vh;
+  min-height: 100svh;
   font-family: var(--font);
   font-size: 0.9375rem;
   line-height: 1.45;
@@ -95,6 +100,30 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   transition: background-color 280ms ease, color 280ms ease;
+}
+
+/* Locked app chrome — keeps bottom nav from bouncing with Safari URL bar */
+body.app-body {
+  height: 100vh;
+  height: 100svh;
+  max-height: 100vh;
+  max-height: 100svh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  body.app-body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: auto;
+    max-height: none;
+    min-height: 100vh;
+    min-height: 100svh;
+    display: block;
+  }
 }
 
 button, a, [role="button"] {
@@ -133,8 +162,13 @@ h1, h2, h3, p { margin: 0; }
 .app-shell {
   width: min(100%, 430px);
   margin-inline: auto;
-  min-height: 100dvh;
-  padding: calc(var(--safe-t) + var(--space-4)) var(--space-4) calc(var(--nav-h) + var(--safe-b) + var(--space-6));
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding: calc(var(--safe-t) + var(--space-4)) var(--space-4) var(--space-6);
   position: relative;
 }
 
@@ -142,6 +176,10 @@ h1, h2, h3, p { margin: 0; }
   .app-shell {
     width: min(100% - 2rem, 720px);
     padding-bottom: var(--space-8);
+    flex: none;
+    min-height: 100vh;
+    min-height: 100svh;
+    overflow: visible;
   }
 }
 
@@ -254,14 +292,16 @@ html[data-theme="light"] .btn--fab { color: #fff; }
 .auth-links a { color: var(--accent); font-weight: 600; }
 
 .status-banner {
-  position: sticky;
-  top: var(--safe-t);
+  flex: 0 0 auto;
+  position: relative;
+  top: auto;
   z-index: 25;
   display: none;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
   min-height: 1.75rem;
+  padding-top: var(--safe-t);
   font-size: 0.75rem;
   font-weight: 600;
   background: var(--bg-soft);
@@ -364,11 +404,11 @@ html[data-theme="light"] .btn--fab { color: #fff; }
 .empty p { margin-bottom: var(--space-5); font-size: 0.875rem; }
 
 .bottom-nav {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 0;
+  /* In-flow footer (not position:fixed) — stops iOS Safari chrome from bouncing it */
+  position: relative;
+  flex: 0 0 auto;
   width: min(100%, 430px);
+  margin-inline: auto;
   height: calc(var(--nav-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
   display: grid;
@@ -380,7 +420,14 @@ html[data-theme="light"] .btn--fab { color: #fff; }
   z-index: 40;
 }
 @media (min-width: 768px) {
-  .bottom-nav { width: min(100%, 720px); }
+  .bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: min(100%, 720px);
+    margin-inline: auto;
+  }
 }
 .bottom-nav button {
   display: flex;

@@ -1,5 +1,5 @@
 /* NOVA Finance service worker — app shell + offline queue sync handled in page JS */
-const CACHE = 'nova-shell-v1';
+const CACHE = 'nova-shell-v2';
 const SHELL = [
   '/',
   '/offline.html',
