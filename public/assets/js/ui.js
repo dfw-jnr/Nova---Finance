@@ -77,16 +77,38 @@
     document.body.classList.toggle('modal-open', open);
   }
 
+  function pinChrome() {
+    const vv = window.visualViewport;
+    let bottom = 0;
+    if (vv) {
+      bottom = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    }
+    document.documentElement.style.setProperty('--nav-bottom', bottom + 'px');
+  }
+
+  function initChromePin() {
+    pinChrome();
+    window.addEventListener('resize', pinChrome, { passive: true });
+    window.addEventListener('orientationchange', () => setTimeout(pinChrome, 50));
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', pinChrome, { passive: true });
+      window.visualViewport.addEventListener('scroll', pinChrome, { passive: true });
+    }
+    // iOS sometimes reports wrong insets on first paint
+    setTimeout(pinChrome, 0);
+    setTimeout(pinChrome, 120);
+    setTimeout(pinChrome, 400);
+  }
+
   function openModal(id) {
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.hidden = false;
-    requestAnimationFrame(() => {
-      modal.classList.add('is-open');
-      syncModalBodyClass();
-    });
+    modal.classList.add('is-open');
+    syncModalBodyClass();
+    pinChrome();
     const focusable = modal.querySelector('input, select, button, textarea');
-    setTimeout(() => focusable?.focus(), reduce() ? 0 : 20);
+    if (focusable) focusable.focus({ preventScroll: true });
   }
 
   function closeModal(id) {
@@ -94,7 +116,10 @@
     if (!modal) return;
     modal.classList.remove('is-open');
     syncModalBodyClass();
-    setTimeout(() => { modal.hidden = true; }, reduce() ? 0 : 250);
+    const hide = () => { modal.hidden = true; };
+    if (reduce()) hide();
+    else setTimeout(hide, 140);
+    pinChrome();
   }
 
   /* Command palette — instant, no animation */
@@ -197,5 +222,6 @@
   global.NovaUI = {
     toast, money, greeting, applyTheme, initTheme, setStatus,
     openModal, closeModal, initPalette, openPalette, closePalette, reduce,
+    pinChrome, initChromePin,
   };
 })(window);

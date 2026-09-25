@@ -306,20 +306,32 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
 
-  <script src="/assets/js/api.js?v=11" defer></script>
-  <script src="/assets/js/ui.js?v=11" defer></script>
-  <script src="/assets/js/transactions.js?v=11" defer></script>
-  <script src="/assets/js/receipt.js?v=11" defer></script>
-  <script src="/assets/js/app.js?v=11" defer></script>
+  <script src="/assets/js/api.js?v=12" defer></script>
+  <script src="/assets/js/ui.js?v=12" defer></script>
+  <script src="/assets/js/transactions.js?v=12" defer></script>
+  <script src="/assets/js/receipt.js?v=12" defer></script>
+  <script src="/assets/js/app.js?v=12" defer></script>
   <script>
     document.querySelector('[data-nav-jump="transactions"]')?.addEventListener('click', () => {
-      document.querySelector('[data-nav="transactions"]')?.click();
+      document.querySelector('[data-nav="transactions"]')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     });
     document.addEventListener('click', (e) => {
       const t = e.target;
       if (!(t instanceof HTMLElement)) return;
-      if (t.matches('[data-open-budget-btn]')) window.NovaUI?.openModal('modal-budget');
-      if (t.matches('[data-open-goal-btn]')) window.NovaUI?.openModal('modal-goal');
-      if (t.matches('[data-open-account-btn]')) window.NovaUI?.openModal('modal-account');
+      if (t.matches('[data-open-budget-btn]')) {
+        document.getElementById('form-budget')?.reset();
+        window.NovaUI?.openModal('modal-budget');
+      }
+      if (t.matches('[data-open-goal-btn]')) {
+        const form = document.getElementById('form-goal');
+        form?.reset();
+        const cur = document.getElementById('goal-current');
+        if (cur) cur.value = '0';
+        window.NovaUI?.openModal('modal-goal');
+      }
+      if (t.matches('[data-open-account-btn]')) {
+        document.getElementById('form-account')?.reset();
+        window.NovaUI?.openModal('modal-account');
+      }
     });
   </script>

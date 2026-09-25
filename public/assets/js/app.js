@@ -19,12 +19,21 @@
 
   function showScreen(name) {
     $$('.screen').forEach((el) => el.classList.toggle('is-active', el.dataset.screen === name));
-    $$('.bottom-nav button').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.nav === name));
-    if (name === 'home') loadHome();
-    if (name === 'transactions') loadTransactions();
-    if (name === 'analytics') loadAnalytics();
-    if (name === 'goals') loadGoals();
-    if (name === 'more') loadMore();
+    $$('.bottom-nav button').forEach((btn) => {
+      const on = btn.dataset.nav === name;
+      btn.classList.toggle('is-active', on);
+      if (on) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
+    });
+    NovaUI.pinChrome?.();
+    // Load data after paint so the tab switch feels instant
+    requestAnimationFrame(() => {
+      if (name === 'home') loadHome();
+      if (name === 'transactions') loadTransactions();
+      if (name === 'analytics') loadAnalytics();
+      if (name === 'goals') loadGoals();
+      if (name === 'more') loadMore();
+    });
   }
 
   function paintHome(analytics, txns) {
@@ -66,7 +75,7 @@
     if (chartsReady) return chartsReady;
     chartsReady = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = '/assets/js/charts.js?v=11';
+      s.src = '/assets/js/charts.js?v=12';
       s.async = true;
       s.onload = () => resolve();
       s.onerror = () => reject(new Error('Charts failed to load'));
@@ -160,7 +169,7 @@
       if (!rows.length) {
         el.innerHTML = `<div class="empty"><h3>No budgets</h3><p>Create a monthly budget to stay on track.</p>
           <button type="button" class="btn btn--ghost" data-open-budget style="width:auto">Create budget</button></div>`;
-        el.querySelector('[data-open-budget]')?.addEventListener('click', () => NovaUI.openModal('modal-budget'));
+        el.querySelector('[data-open-budget]')?.addEventListener('click', openBudgetModal);
         return;
       }
       el.innerHTML = rows.map((b) => {
@@ -189,7 +198,7 @@
       if (!rows.length) {
         el.innerHTML = `<div class="empty"><h3>No goals yet</h3><p>Set a target and track your progress.</p>
           <button type="button" class="btn btn--primary" data-open-goal style="width:auto;display:inline-flex">Create goal</button></div>`;
-        el.querySelector('[data-open-goal]')?.addEventListener('click', () => NovaUI.openModal('modal-goal'));
+        el.querySelector('[data-open-goal]')?.addEventListener('click', openGoalModal);
         return;
       }
       el.innerHTML = rows.map((g) => {
@@ -332,6 +341,40 @@
     NovaReceipt?.clearPending();
   }
 
+  function resetGoalForm() {
+    const form = $('#form-goal');
+    form?.reset();
+    if ($('#goal-current')) $('#goal-current').value = '0';
+  }
+
+  function resetBudgetForm() {
+    $('#form-budget')?.reset();
+  }
+
+  function resetAccountForm() {
+    const form = $('#form-account');
+    form?.reset();
+    if ($('#acc-type')) $('#acc-type').value = 'bank';
+    if ($('#acc-currency')) $('#acc-currency').value = state.currency || 'EUR';
+    if ($('#acc-balance')) $('#acc-balance').value = '0';
+  }
+
+  function openGoalModal() {
+    resetGoalForm();
+    NovaUI.openModal('modal-goal');
+  }
+
+  function openBudgetModal() {
+    populateSelects();
+    resetBudgetForm();
+    NovaUI.openModal('modal-budget');
+  }
+
+  function openAccountModal() {
+    resetAccountForm();
+    NovaUI.openModal('modal-account');
+  }
+
   function bindForms() {
     $('#form-txn')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -387,6 +430,7 @@
         });
         NovaUI.toast('Budget created');
         NovaUI.closeModal('modal-budget');
+        resetBudgetForm();
         loadAnalytics();
       } catch (err) {
         NovaUI.toast(err.message);
@@ -405,6 +449,7 @@
         });
         NovaUI.toast('Goal created');
         NovaUI.closeModal('modal-goal');
+        resetGoalForm();
         loadGoals();
       } catch (err) {
         NovaUI.toast(err.message);
@@ -423,7 +468,9 @@
         });
         NovaUI.toast('Account created');
         NovaUI.closeModal('modal-account');
+        resetAccountForm();
         loadMore();
+        populateSelects(true);
       } catch (err) {
         NovaUI.toast(err.message);
       }
@@ -508,20 +555,26 @@
 
   function bindNav() {
     $$('.bottom-nav button').forEach((btn) => {
-      btn.addEventListener('click', () => showScreen(btn.dataset.nav));
+      // pointerdown feels instant on phones (no click delay)
+      const go = (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault();
+        showScreen(btn.dataset.nav);
+      };
+      btn.addEventListener('pointerdown', go);
     });
     $$('[data-open-add], .btn--fab').forEach((el) => {
       el.addEventListener('click', () => {
-        populateSelects();
         resetTxnForm();
         NovaUI.openModal('modal-txn');
+        populateSelects();
       });
     });
     $$('[data-open-recurring-btn]').forEach((el) => {
-      el.addEventListener('click', async () => {
-        await populateSelects();
+      el.addEventListener('click', () => {
         $('#rec-next').value = new Date().toISOString().slice(0, 10);
         NovaUI.openModal('modal-recurring');
+        populateSelects();
       });
     });
     $$('[data-open-password-btn]').forEach((el) => {
@@ -545,7 +598,7 @@
       searchTimer = setTimeout(() => {
         state.filter.q = e.target.value.trim();
         loadTransactions();
-      }, 220);
+      }, 160);
     });
     $$('[data-filter-type]').forEach((chip) => {
       chip.addEventListener('click', () => {
@@ -582,11 +635,11 @@
   }
 
   NovaUI.initPalette((cmd) => {
-    if (cmd === 'add') { populateSelects(); NovaUI.openModal('modal-txn'); }
+    if (cmd === 'add') { resetTxnForm(); NovaUI.openModal('modal-txn'); populateSelects(); }
     if (cmd === 'search') { showScreen('transactions'); $('#txn-search')?.focus(); }
     if (cmd === 'analytics') showScreen('analytics');
-    if (cmd === 'budget') { populateSelects(); NovaUI.openModal('modal-budget'); }
-    if (cmd === 'goal') NovaUI.openModal('modal-goal');
+    if (cmd === 'budget') openBudgetModal();
+    if (cmd === 'goal') openGoalModal();
     if (cmd === 'theme') $('#theme-cycle')?.click();
     if (cmd === 'accounts') showScreen('more');
     if (cmd === 'settings') showScreen('more');
@@ -594,6 +647,7 @@
 
   async function boot() {
     NovaUI.initTheme();
+    NovaUI.initChromePin?.();
     try {
       const auth = await NovaAPI.bootstrapAuth();
       if (!auth.authenticated) {
@@ -617,6 +671,7 @@
       $$('.screen').forEach((el) => el.classList.toggle('is-active', el.dataset.screen === 'home'));
       $$('.bottom-nav button').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.nav === 'home'));
       await loadHome(auth);
+      NovaUI.pinChrome?.();
 
       const sync = () => NovaAPI.syncPending(NovaUI.setStatus).then((r) => {
         if (r.synced) {
@@ -640,8 +695,18 @@
       };
       setInterval(ping, 7 * 60 * 1000);
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') ping();
+        if (document.visibilityState === 'visible') {
+          ping();
+          NovaUI.pinChrome?.();
+        }
       });
+
+      // Warm charts in the background after first paint
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => { ensureCharts().catch(() => {}); }, { timeout: 4000 });
+      } else {
+        setTimeout(() => { ensureCharts().catch(() => {}); }, 2500);
+      }
     } catch (e) {
       console.error(e);
       NovaUI.toast('Unable to start app');

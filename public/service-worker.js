@@ -1,15 +1,15 @@
 /* NOVA Finance service worker — static assets only (never cache HTML redirects) */
-const CACHE = 'nova-shell-v11';
+const CACHE = 'nova-shell-v12';
 const SHELL = [
   '/offline.html',
   '/manifest.json',
-  '/assets/css/app.css?v=11',
-  '/assets/css/components.css?v=11',
-  '/assets/js/api.js?v=11',
-  '/assets/js/ui.js?v=11',
-  '/assets/js/transactions.js?v=11',
-  '/assets/js/receipt.js?v=11',
-  '/assets/js/app.js?v=11',
+  '/assets/css/app.css?v=12',
+  '/assets/css/components.css?v=12',
+  '/assets/js/api.js?v=12',
+  '/assets/js/ui.js?v=12',
+  '/assets/js/transactions.js?v=12',
+  '/assets/js/receipt.js?v=12',
+  '/assets/js/app.js?v=12',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
 ];
