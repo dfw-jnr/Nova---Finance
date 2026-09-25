@@ -100,12 +100,6 @@ body {
   transition: background-color 280ms ease, color 280ms ease;
 }
 
-body.app-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-}
-
 button, a, [role="button"] {
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -142,7 +136,6 @@ h1, h2, h3, p { margin: 0; }
 .app-shell {
   width: min(100%, 430px);
   margin-inline: auto;
-  flex: 1 0 auto;
   padding: calc(var(--safe-t) + var(--space-4)) var(--space-4) var(--space-6);
   position: relative;
 }
@@ -373,11 +366,9 @@ html[data-theme="light"] .btn--fab { color: #fff; }
 .empty p { margin-bottom: var(--space-5); font-size: 0.875rem; }
 
 .bottom-nav {
-  position: relative;
-  flex: 0 0 auto;
+  position: static;
   width: min(100%, 430px);
   margin-inline: auto;
-  margin-top: auto;
   height: calc(var(--nav-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
   display: grid;
