@@ -1,5 +1,5 @@
 /* NOVA Finance service worker — static assets only (never cache HTML redirects) */
-const CACHE = 'nova-shell-v4';
+const CACHE = 'nova-shell-v5';
 const SHELL = [
   '/offline.html',
   '/manifest.json',
