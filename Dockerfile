@@ -1,7 +1,9 @@
 FROM php:8.3-cli-alpine
 
-RUN apk add --no-cache sqlite-libs \
-    && docker-php-ext-install pdo pdo_sqlite
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS sqlite-dev \
+    && apk add --no-cache sqlite-libs \
+    && docker-php-ext-install pdo pdo_sqlite \
+    && apk del .build-deps
 
 WORKDIR /app
 
