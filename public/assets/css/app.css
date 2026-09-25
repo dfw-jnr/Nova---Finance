@@ -102,7 +102,7 @@ body {
   transition: background-color 280ms ease, color 280ms ease;
 }
 
-/* Locked app chrome — keeps bottom nav from bouncing with Safari URL bar */
+/* Locked app chrome — full-screen frame; nav pinned to bottom edge */
 body.app-body {
   height: 100vh;
   height: 100svh;
@@ -110,8 +110,7 @@ body.app-body {
   max-height: 100svh;
   min-height: 0;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  position: relative;
 }
 
 @media (min-width: 768px) {
@@ -122,7 +121,7 @@ body.app-body {
     max-height: none;
     min-height: 100vh;
     min-height: 100svh;
-    display: block;
+    position: static;
   }
 }
 
@@ -162,23 +161,22 @@ h1, h2, h3, p { margin: 0; }
 .app-shell {
   width: min(100%, 430px);
   margin-inline: auto;
-  flex: 1 1 auto;
-  min-height: 0;
+  height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  padding: calc(var(--safe-t) + var(--space-4)) var(--space-4) var(--space-6);
+  padding: calc(var(--safe-t) + var(--space-4)) var(--space-4) calc(var(--nav-h) + var(--safe-b) + var(--space-6));
   position: relative;
 }
 
 @media (min-width: 768px) {
   .app-shell {
     width: min(100% - 2rem, 720px);
-    padding-bottom: var(--space-8);
-    flex: none;
+    height: auto;
     min-height: 100vh;
     min-height: 100svh;
+    padding-bottom: var(--space-8);
     overflow: visible;
   }
 }
@@ -292,10 +290,11 @@ html[data-theme="light"] .btn--fab { color: #fff; }
 .auth-links a { color: var(--accent); font-weight: 600; }
 
 .status-banner {
-  flex: 0 0 auto;
-  position: relative;
-  top: auto;
-  z-index: 25;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
   display: none;
   align-items: center;
   justify-content: center;
@@ -404,30 +403,31 @@ html[data-theme="light"] .btn--fab { color: #fff; }
 .empty p { margin-bottom: var(--space-5); font-size: 0.875rem; }
 
 .bottom-nav {
-  /* In-flow footer (not position:fixed) — stops iOS Safari chrome from bouncing it */
-  position: relative;
-  flex: 0 0 auto;
-  width: min(100%, 430px);
+  /* Glued to the bottom edge of the screen */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 430px;
   margin-inline: auto;
   height: calc(var(--nav-h) + var(--safe-b));
   padding-bottom: var(--safe-b);
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  background: var(--nav-bg);
+  background: var(--bg);
+  background: color-mix(in srgb, var(--nav-bg) 100%, transparent);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   border-top: 1px solid var(--border);
   z-index: 40;
+  /* Avoid transform — it breaks fixed positioning on iOS */
+}
+@supports not (background: color-mix(in srgb, white 50%, black)) {
+  .bottom-nav { background: var(--nav-bg); }
 }
 @media (min-width: 768px) {
-  .bottom-nav {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: min(100%, 720px);
-    margin-inline: auto;
-  }
+  .bottom-nav { max-width: 720px; }
 }
 .bottom-nav button {
   display: flex;
@@ -447,11 +447,13 @@ html[data-theme="light"] .btn--fab { color: #fff; }
 
 .toast-region {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 1rem;
+  right: 1rem;
   bottom: calc(var(--nav-h) + var(--safe-b) + 4.5rem);
   z-index: 80;
-  width: min(100% - 2rem, 24rem);
+  width: auto;
+  max-width: 24rem;
+  margin-inline: auto;
   pointer-events: none;
 }
 .toast {
