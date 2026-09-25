@@ -9,7 +9,15 @@ services:
         value: production
       - key: APP_DEBUG
         value: "0"
-      - key: DB_DRIVER
-        value: sqlite
       - key: APP_URL
+        value: https://nova-finance-e2hp.onrender.com
+      # Set these in the Render dashboard (do not commit secrets):
+      # DB_DRIVER=mysql
+      # DATABASE_URL=mysql://USER:PASSWORD@HOST:PORT/DATABASE
+      # DB_SSL=1
+      - key: DB_DRIVER
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL
+        value: "1"

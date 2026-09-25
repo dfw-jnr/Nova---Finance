@@ -1,8 +1,8 @@
 FROM php:8.3-cli-alpine
 
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS sqlite-dev \
-    && apk add --no-cache sqlite-libs \
-    && docker-php-ext-install pdo pdo_sqlite \
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS sqlite-dev mariadb-dev \
+    && apk add --no-cache sqlite-libs mariadb-connector-c \
+    && docker-php-ext-install pdo pdo_sqlite pdo_mysql \
     && apk del .build-deps
 
 WORKDIR /app
@@ -15,7 +15,6 @@ RUN cp app/config/env.example.php app/config/env.php \
 
 ENV APP_ENV=production
 ENV APP_DEBUG=0
-ENV DB_DRIVER=sqlite
 ENV PORT=8080
 
 EXPOSE 8080
