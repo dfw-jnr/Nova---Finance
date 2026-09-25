@@ -28,8 +28,8 @@ $csrf = Csrf::token();
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/app.css?v=6" />
-  <link rel="stylesheet" href="/assets/css/components.css?v=6" />
+  <link rel="stylesheet" href="/assets/css/app.css?v=7" />
+  <link rel="stylesheet" href="/assets/css/components.css?v=7" />
   <script>
     (function () {
       try {
