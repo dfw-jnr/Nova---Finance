@@ -71,10 +71,21 @@ mysql -u root -p < database/schema.sql
 1. Push this repo to GitHub
 2. Sign up at [render.com](https://render.com) → **New** → **Web Service** → connect the repo
 3. Runtime: **Docker** (uses the included `Dockerfile`)
-4. After deploy, set env var `APP_URL` to your HTTPS URL (e.g. `https://nova-finance.onrender.com`)
-5. Open that URL on your phone
+4. Set `APP_URL` to your HTTPS URL
 
-Free Render instances sleep after idle (first open can take ~30s). SQLite data can reset on redeploy — fine for personal use; for lasting storage later, add a MySQL database.
+### Keep your data (required)
+
+Render wipes the container disk on every deploy, so **SQLite will lose all accounts**. Use a free MySQL database:
+
+1. Create a free MySQL at [Aiven](https://console.aiven.io/signup) (no credit card)
+2. Copy the service URI (`mysql://…`)
+3. In Render → Environment, set:
+   - `DB_DRIVER` = `mysql`
+   - `DATABASE_URL` = your `mysql://…` URI
+   - `DB_SSL` = `1`
+4. Redeploy once — tables are created automatically; data survives future deploys
+
+Free Render instances still sleep after idle (first open can take ~30s).
 
 ## Install on iPhone (like a real app)
 
