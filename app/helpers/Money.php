@@ -7,7 +7,9 @@ final class Money
 {
     public static function format(string|float $amount, string $currency = 'EUR'): string
     {
-        $n = (float) $amount;
+        $normalized = Decimal::normalize((string) $amount);
+        $neg = str_starts_with($normalized, '-');
+        $abs = Decimal::abs($normalized);
         $symbols = [
             'EUR' => '€',
             'USD' => '$',
@@ -15,16 +17,20 @@ final class Money
             'GHS' => 'GH₵',
         ];
         $sym = $symbols[$currency] ?? ($currency . ' ');
-        $sign = $n < 0 ? '−' : '';
-        return $sign . $sym . number_format(abs($n), 2, '.', ',');
+        $parts = explode('.', $abs);
+        $whole = number_format((int) $parts[0], 0, '.', ',');
+        $frac = $parts[1] ?? '00';
+        return ($neg ? '−' : '') . $sym . $whole . '.' . $frac;
     }
 
     public static function signed(string|float $amount, string $type, string $currency = 'EUR'): string
     {
-        $n = abs((float) $amount);
-        $prefix = $type === 'income' ? '+' : '−';
-        $base = self::format($n, $currency);
-        // strip leading euro if already has symbol
+        $abs = Decimal::abs(Decimal::normalize((string) $amount));
+        $prefix = $type === 'income' ? '+' : ($type === 'transfer' ? '' : '−');
+        $base = self::format($abs, $currency);
+        if ($type === 'transfer') {
+            return $base;
+        }
         return $prefix . ltrim($base, '+−');
     }
 }

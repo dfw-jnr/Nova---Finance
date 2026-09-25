@@ -22,12 +22,15 @@
 
   async function request(url, options = {}) {
     const opts = { credentials: 'same-origin', ...options };
+    const isForm = typeof FormData !== 'undefined' && opts.body instanceof FormData;
     opts.headers = {
-      'Content-Type': 'application/json',
       'X-CSRF-TOKEN': csrf,
       ...(options.headers || {}),
     };
-    if (opts.body && typeof opts.body === 'object') {
+    if (!isForm) {
+      opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
+    }
+    if (opts.body && typeof opts.body === 'object' && !isForm) {
       opts.body = JSON.stringify({ ...opts.body, _csrf: csrf });
     }
     const res = await fetch(url, opts);
@@ -152,5 +155,24 @@
     settings: () => request('/api/settings/'),
     saveTheme: (theme) => request('/api/settings/', { method: 'POST', body: { theme } }),
     authCheck: () => request('/api/auth/'),
+    safeToSpend: () => request('/api/safe-to-spend/'),
+    calendar: (year, month) =>
+      request('/api/calendar/?year=' + encodeURIComponent(year) + '&month=' + encodeURIComponent(month)),
+    forecast: (horizon = 30) =>
+      request('/api/forecast/?horizon=' + encodeURIComponent(horizon)),
+    insights: () => request('/api/insights/'),
+    importCsv: (formData) => {
+      formData.append('_csrf', csrf);
+      return request('/api/import/', { method: 'POST', body: formData });
+    },
+    commitImport: (importId, rows) =>
+      request('/api/import/?id=' + encodeURIComponent(importId) + '&action=commit', {
+        method: 'POST',
+        body: { rows },
+      }),
+    exportUrl: (format = 'csv') => '/api/export/?format=' + encodeURIComponent(format),
+    logoutAll: () => request('/api/auth/?action=logout_all', { method: 'POST', body: {} }),
+    deleteAccount: (password) =>
+      request('/api/auth/?action=delete_account', { method: 'POST', body: { password } }),
   };
 })(window);

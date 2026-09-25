@@ -59,6 +59,24 @@ if ($method === 'POST') {
         Response::ok(['changed' => true]);
     }
 
+    if ($action === 'logout_all') {
+        Csrf::requireValid(Request::bearerOrBodyCsrf($body));
+        $user = $auth->requireUser();
+        $auth->logoutAll((int) $user['id']);
+        Response::ok(['logged_out_all' => true]);
+    }
+
+    if ($action === 'delete_account') {
+        Csrf::requireValid(Request::bearerOrBodyCsrf($body));
+        $user = $auth->requireUser();
+        $password = (string) ($body['password'] ?? '');
+        if ($password === '') {
+            Response::error('VALIDATION_ERROR', 'Password is required to delete your account.');
+        }
+        $auth->deleteAccount((int) $user['id'], $password);
+        Response::ok(['deleted' => true]);
+    }
+
     if ($action === 'register') {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'cli';
         if (!RateLimiter::hit('register:' . $ip, 5, 3600)) {

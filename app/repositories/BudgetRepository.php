@@ -7,6 +7,11 @@ use Nova\Helpers\Database;
 
 final class BudgetRepository
 {
+    public function listForCurrentMonth(int $userId): array
+    {
+        return $this->listForUser($userId);
+    }
+
     public function listForUser(int $userId, ?int $year = null, ?int $month = null): array
     {
         $year ??= (int) date('Y');

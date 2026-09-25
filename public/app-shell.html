@@ -23,6 +23,14 @@
         <div class="stat stat--out" role="listitem"><p class="label">Expenses</p><p class="value" id="stat-expenses">€0.00</p></div>
         <div class="stat" role="listitem"><p class="label">Savings</p><p class="value" id="stat-savings">€0.00</p></div>
       </div>
+      <button type="button" class="sts-card" id="btn-sts" aria-haspopup="dialog" aria-controls="modal-sts">
+        <p class="label">Safe to Spend</p>
+        <p class="value" id="sts-value">€0.00</p>
+        <p class="sub" id="sts-sub">Tap for breakdown</p>
+      </button>
+      <div class="section-head"><h2>Upcoming</h2></div>
+      <div id="home-upcoming" class="upcoming-list"></div>
+      <button type="button" class="insight-teaser" id="home-insight" hidden aria-haspopup="dialog"></button>
       <div class="section-head">
         <h2>Recent</h2>
         <button type="button" data-nav-jump="transactions">See all</button>
@@ -40,6 +48,7 @@
         <button type="button" class="chip is-active" data-filter-type="">All</button>
         <button type="button" class="chip" data-filter-type="expense">Expenses</button>
         <button type="button" class="chip" data-filter-type="income">Income</button>
+        <button type="button" class="chip" data-filter-type="transfer">Transfer</button>
       </div>
       <div id="txn-list"></div>
     </section>
@@ -52,6 +61,19 @@
         <button type="button" data-range="90D" role="tab">90D</button>
         <button type="button" data-range="1Y" role="tab">1Y</button>
       </div>
+      <p class="sub" style="margin:-0.5rem 0 1rem"><button type="button" class="link-btn" data-nav-jump="calendar">Open calendar</button></p>
+      <div class="chart-box" id="forecast-card">
+        <h3>Cash forecast <span class="badge-est">Estimate</span></h3>
+        <div class="segmented forecast-horizon" role="tablist" aria-label="Forecast horizon">
+          <button type="button" class="is-active" data-forecast="30" role="tab">30d</button>
+          <button type="button" data-forecast="60" role="tab">60d</button>
+          <button type="button" data-forecast="90" role="tab">90d</button>
+        </div>
+        <p class="forecast-end" id="forecast-balance">—</p>
+        <p class="sub" id="forecast-disclaimer">Estimate based on recurring items only.</p>
+      </div>
+      <div class="section-head"><h2>Insights</h2></div>
+      <div id="insights-list" class="card-list"></div>
       <div class="chart-box">
         <h3>Income vs Expenses</h3>
         <p class="sub" id="an-summary">Loading…</p>
@@ -76,15 +98,37 @@
       <div id="goal-list" class="card-list"></div>
     </section>
 
+    <section class="screen" data-screen="calendar" aria-label="Calendar">
+      <div class="section-head">
+        <h2>Calendar</h2>
+        <div class="cal-nav">
+          <button type="button" class="icon-btn" id="cal-prev" aria-label="Previous month">‹</button>
+          <span id="cal-label" class="cal-label"></span>
+          <button type="button" class="icon-btn" id="cal-next" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="cal-grid" role="grid" aria-label="Month"></div>
+      <p class="sub cal-legend"><span class="cal-dot cal-dot--actual"></span> Posted · <span class="cal-dot cal-dot--projected"></span> Projected</p>
+    </section>
+
     <section class="screen" data-screen="more" aria-label="More">
       <div class="section-head"><h2>More</h2></div>
       <div class="more-list">
+        <button type="button" data-nav-jump="calendar">Calendar</button>
         <button type="button" data-open-account-btn>Add account</button>
         <button type="button" data-open-recurring-btn>Add recurring</button>
-        <button type="button" id="btn-export-csv">Export CSV</button>
+        <button type="button" id="btn-import-csv">Import CSV</button>
         <button type="button" data-open-password-btn>Change password</button>
         <button type="button" data-open-palette>Command palette</button>
         <button type="button" id="btn-logout">Log out</button>
+      </div>
+      <div class="section-head" style="margin-top:1.5rem"><h2>Privacy &amp; Security</h2></div>
+      <p class="sub privacy-copy">NOVA stores your accounts, transactions, budgets, goals, recurring items, settings, and optional receipt images on your account. We do not sell your data. Export anytime.</p>
+      <div class="more-list">
+        <button type="button" id="btn-export-json">Export JSON</button>
+        <button type="button" id="btn-export-csv">Export CSV</button>
+        <button type="button" id="btn-logout-all">Sign out everywhere</button>
+        <button type="button" class="more-list__danger" id="btn-delete-account">Delete account</button>
       </div>
       <div class="section-head" style="margin-top:1.5rem"><h2>Recurring</h2></div>
       <div id="recurring-list" class="card-list"></div>
@@ -127,9 +171,10 @@
       </header>
       <form id="form-txn">
         <input type="hidden" name="id" id="txn-edit-id" value="" />
-        <div class="type-toggle" role="radiogroup" aria-label="Type">
+        <div class="type-toggle type-toggle--3" role="radiogroup" aria-label="Type">
           <label><input type="radio" name="type" value="expense" checked /> Expense</label>
           <label><input type="radio" name="type" value="income" /> Income</label>
+          <label><input type="radio" name="type" value="transfer" /> Transfer</label>
         </div>
         <div class="field" id="field-amount">
           <label for="txn-amount">Amount</label>
@@ -137,15 +182,23 @@
         </div>
         <div class="field" id="field-merchant">
           <label for="txn-merchant">Description</label>
-          <input id="txn-merchant" name="merchant" required maxlength="160" />
+          <input id="txn-merchant" name="merchant" maxlength="160" />
         </div>
-        <div class="field">
+        <div class="field" id="field-category">
           <label for="txn-category">Category</label>
           <select id="txn-category" name="category_id"></select>
         </div>
-        <div class="field">
+        <div class="field" id="field-account">
           <label for="txn-account">Account</label>
-          <select id="txn-account" name="account_id" required></select>
+          <select id="txn-account" name="account_id"></select>
+        </div>
+        <div class="field" id="field-transfer" hidden>
+          <label for="txn-from">From account</label>
+          <select id="txn-from" name="from_account_id"></select>
+        </div>
+        <div class="field" id="field-transfer-to" hidden>
+          <label for="txn-to">To account</label>
+          <select id="txn-to" name="to_account_id"></select>
         </div>
         <div class="field">
           <label for="txn-date">Date</label>
@@ -155,7 +208,7 @@
           <label for="txn-notes">Notes</label>
           <textarea id="txn-notes" name="notes" maxlength="2000"></textarea>
         </div>
-        <div class="receipt-box">
+        <div class="receipt-box" id="field-receipt">
           <div class="receipt-box__actions">
             <label class="btn btn--ghost" style="width:auto;cursor:pointer">
               Take photo
@@ -297,6 +350,71 @@
     </div>
   </div>
 
+  <div class="modal" id="modal-sts" hidden>
+    <div class="modal__scrim" data-modal-dismiss tabindex="-1"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="sts-title">
+      <header class="modal__head">
+        <h2 id="sts-title">Safe to Spend</h2>
+        <button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button>
+      </header>
+      <p class="detail-amount" id="sts-modal-value">€0.00</p>
+      <ul class="sts-lines" id="sts-lines"></ul>
+      <p class="sub" id="sts-modal-horizon"></p>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-insight" hidden>
+    <div class="modal__scrim" data-modal-dismiss tabindex="-1"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="insight-title">
+      <header class="modal__head">
+        <h2 id="insight-title">Insight</h2>
+        <button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button>
+      </header>
+      <p id="insight-period" class="sub" hidden></p>
+      <p id="insight-body" class="sub" style="margin-bottom:1rem"></p>
+      <p class="label" style="margin-bottom:.5rem">How we calculated this</p>
+      <ul class="sts-lines" id="insight-evidence"></ul>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" id="btn-insight-txns" style="width:auto" hidden>View transactions</button>
+        <button type="button" class="btn btn--primary" data-modal-dismiss style="width:auto">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-import" hidden>
+    <div class="modal__scrim" data-modal-dismiss tabindex="-1"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="import-title">
+      <header class="modal__head">
+        <h2 id="import-title">Import CSV</h2>
+        <button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button>
+      </header>
+      <div class="field">
+        <label for="import-file">Transactions file</label>
+        <input id="import-file" type="file" accept=".csv,text/csv" />
+      </div>
+      <div class="field">
+        <label for="import-account">Default account</label>
+        <select id="import-account"></select>
+      </div>
+      <div id="import-preview" class="import-preview" hidden></div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-modal-dismiss>Cancel</button>
+        <button type="button" class="btn btn--primary" id="btn-import-commit" style="width:auto" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-cal-day" hidden>
+    <div class="modal__scrim" data-modal-dismiss tabindex="-1"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="cal-day-title">
+      <header class="modal__head">
+        <h2 id="cal-day-title">Day</h2>
+        <button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button>
+      </header>
+      <div id="cal-day-content"></div>
+    </div>
+  </div>
+
   <div class="palette" id="command-palette" hidden>
     <div class="palette__scrim" data-palette-dismiss></div>
     <div class="palette__dialog" role="dialog" aria-modal="true" aria-label="Command palette">
@@ -310,32 +428,24 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite"></div>
 
-  <script src="/assets/js/api.js?v=13" defer></script>
-  <script src="/assets/js/ui.js?v=13" defer></script>
-  <script src="/assets/js/transactions.js?v=13" defer></script>
-  <script src="/assets/js/receipt.js?v=13" defer></script>
-  <script src="/assets/js/app.js?v=13" defer></script>
+  <script src="/assets/js/api.js?v=15" defer></script>
+  <script src="/assets/js/ui.js?v=15" defer></script>
+  <script src="/assets/js/transactions.js?v=15" defer></script>
+  <script src="/assets/js/receipt.js?v=15" defer></script>
+  <script src="/assets/js/app.js?v=15" defer></script>
   <script>
-    document.querySelector('[data-nav-jump="transactions"]')?.addEventListener('click', () => {
-      document.querySelector('[data-nav="transactions"]')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-    });
     document.addEventListener('click', (e) => {
       const t = e.target;
       if (!(t instanceof HTMLElement)) return;
-      if (t.matches('[data-open-budget-btn]')) {
-        document.getElementById('form-budget')?.reset();
-        window.NovaUI?.openModal('modal-budget');
+      const jump = t.closest('[data-nav-jump]');
+      if (jump) {
+        e.preventDefault();
+        const screen = jump.getAttribute('data-nav-jump');
+        window.showScreen?.(screen, { push: true });
+        return;
       }
-      if (t.matches('[data-open-goal-btn]')) {
-        const form = document.getElementById('form-goal');
-        form?.reset();
-        const cur = document.getElementById('goal-current');
-        if (cur) cur.value = '0';
-        window.NovaUI?.openModal('modal-goal');
-      }
-      if (t.matches('[data-open-account-btn]')) {
-        document.getElementById('form-account')?.reset();
-        window.NovaUI?.openModal('modal-account');
-      }
+      if (t.matches('[data-open-budget-btn]')) window.openBudgetModal?.();
+      if (t.matches('[data-open-goal-btn]')) window.openGoalModal?.();
+      if (t.matches('[data-open-account-btn]')) window.openAccountModal?.();
     });
   </script>

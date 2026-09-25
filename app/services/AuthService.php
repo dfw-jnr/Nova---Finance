@@ -59,11 +59,30 @@ final class AuthService
     public function logout(): void
     {
         $_SESSION = [];
-        if (ini_get('session.use_cookies')) {
+        if (session_status() === PHP_SESSION_ACTIVE && !headers_sent() && ini_get('session.use_cookies')) {
             $p = session_get_cookie_params();
             setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
         }
-        session_destroy();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_destroy();
+        }
+    }
+
+    /** Invalidate all sessions for this user (other devices). */
+    public function logoutAll(int $userId): void
+    {
+        $this->users->incrementSessionVersion($userId);
+        $this->logout();
+    }
+
+    public function deleteAccount(int $userId, string $password): void
+    {
+        $user = $this->users->findById($userId);
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+            Response::error('INVALID_CREDENTIALS', 'Password is incorrect.', 401);
+        }
+        $this->users->delete($userId);
+        $this->logout();
     }
 
     public function user(): ?array
@@ -72,18 +91,29 @@ final class AuthService
             return null;
         }
         $user = $this->users->findById((int) $_SESSION['user_id']);
-        if ($user) {
-            unset($user['password_hash']);
+        if (!$user) {
+            return null;
         }
+        if (!$this->sessionVersionValid($user)) {
+            return null;
+        }
+        unset($user['password_hash']);
         return $user;
     }
 
     public function requireUser(): array
     {
-        $user = $this->user();
+        if (empty($_SESSION['user_id'])) {
+            Response::error('UNAUTHENTICATED', 'Authentication required.', 401);
+        }
+        $user = $this->users->findById((int) $_SESSION['user_id']);
         if (!$user) {
             Response::error('UNAUTHENTICATED', 'Authentication required.', 401);
         }
+        if (!$this->sessionVersionValid($user)) {
+            Response::error('SESSION_REVOKED', 'Your session was revoked. Please sign in again.', 401);
+        }
+        unset($user['password_hash']);
         return $user;
     }
 
@@ -104,7 +134,20 @@ final class AuthService
         if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
             session_regenerate_id(true);
         }
+        $user = $this->users->findById($userId);
         $_SESSION['user_id'] = $userId;
         $_SESSION['login_at'] = time();
+        $_SESSION['session_version'] = (int) ($user['session_version'] ?? 1);
+    }
+
+    private function sessionVersionValid(array $user): bool
+    {
+        $expected = (int) ($user['session_version'] ?? 1);
+        $sessionVer = (int) ($_SESSION['session_version'] ?? 0);
+        if ($sessionVer === 0 && $expected === 1) {
+            $_SESSION['session_version'] = $expected;
+            return true;
+        }
+        return $sessionVer === $expected;
     }
 }

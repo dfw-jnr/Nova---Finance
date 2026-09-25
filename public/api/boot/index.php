@@ -3,17 +3,19 @@ declare(strict_types=1);
 
 /**
  * Single-shot bootstrap for the home screen.
- * Cuts several Aiven round-trips into one request (critical on free Render).
  */
 $config = require dirname(__DIR__, 3) . '/app/bootstrap.php';
 
 use Nova\Helpers\Csrf;
+use Nova\Helpers\Decimal;
 use Nova\Helpers\Response;
 use Nova\Repositories\AccountRepository;
 use Nova\Repositories\CategoryRepository;
+use Nova\Repositories\RecurringRepository;
 use Nova\Repositories\TransactionRepository;
 use Nova\Services\AuthService;
 use Nova\Services\RecurringService;
+use Nova\Services\SafeToSpendService;
 
 $auth = new AuthService();
 $user = $auth->user();
@@ -42,7 +44,6 @@ if (empty($_SESSION[$dayKey])) {
     $_SESSION[$dayKey] = 1;
 }
 
-// Release session lock before remaining DB work.
 if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
@@ -50,12 +51,31 @@ if (session_status() === PHP_SESSION_ACTIVE) {
 $accounts = new AccountRepository();
 $categories = new CategoryRepository();
 $txns = new TransactionRepository();
+$base = strtoupper((string) $user['currency']);
 
 $accountList = $accounts->listForUser($userId);
-$totalBalance = '0.00';
+$totalBalance = Decimal::zero();
 foreach ($accountList as $a) {
-    $totalBalance = number_format((float) $totalBalance + (float) $a['balance'], 2, '.', '');
+    if (strtoupper((string) $a['currency']) === $base) {
+        $totalBalance = Decimal::add($totalBalance, (string) $a['balance']);
+    }
 }
+
+$month = $txns->summary($userId);
+$savings = Decimal::sub($month['income'], $month['expenses']);
+if (Decimal::cmp($savings, Decimal::zero()) < 0) {
+    $savings = Decimal::zero();
+}
+
+$sts = (new SafeToSpendService())->calculate($userId, $base);
+$upcoming = array_slice(
+    array_values(array_filter(
+        (new RecurringRepository())->listForUser($userId),
+        static fn ($r) => (int) ($r['is_active'] ?? 1) === 1
+    )),
+    0,
+    5
+);
 
 Response::ok([
     'authenticated' => true,
@@ -66,8 +86,11 @@ Response::ok([
     'categories' => $categories->listForUser($userId),
     'home' => [
         'total_balance' => $totalBalance,
-        'month' => $txns->summary($userId),
-        'currency' => $user['currency'],
+        'month' => $month,
+        'saved' => $savings,
+        'currency' => $base,
         'recent' => $txns->list($userId, ['limit' => 6]),
+        'safe_to_spend' => $sts,
+        'upcoming' => $upcoming,
     ],
 ]);

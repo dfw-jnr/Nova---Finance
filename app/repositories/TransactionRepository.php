@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Nova\Repositories;
 
 use Nova\Helpers\Database;
+use Nova\Helpers\Decimal;
 
 final class TransactionRepository
 {
@@ -11,21 +12,23 @@ final class TransactionRepository
     {
         $stmt = Database::pdo()->prepare(
             'INSERT INTO transactions
-            (user_id, account_id, category_id, client_id, type, amount, currency, merchant, description, notes, txn_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            (user_id, account_id, category_id, client_id, type, amount, currency, merchant, description, notes, txn_date, transfer_group_id, external_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $data['user_id'],
             $data['account_id'],
-            $data['category_id'],
-            $data['client_id'],
+            $data['category_id'] ?? null,
+            $data['client_id'] ?? null,
             $data['type'],
             $data['amount'],
             $data['currency'],
             $data['merchant'],
-            $data['description'],
-            $data['notes'],
+            $data['description'] ?? '',
+            $data['notes'] ?? '',
             $data['txn_date'],
+            $data['transfer_group_id'] ?? null,
+            $data['external_id'] ?? null,
         ]);
         return (int) Database::pdo()->lastInsertId();
     }
@@ -36,6 +39,16 @@ final class TransactionRepository
             'SELECT * FROM transactions WHERE user_id = ? AND client_id = ? LIMIT 1'
         );
         $stmt->execute([$userId, $clientId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public function findByExternalId(int $userId, int $accountId, string $externalId): ?array
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT * FROM transactions WHERE user_id = ? AND account_id = ? AND external_id = ? LIMIT 1'
+        );
+        $stmt->execute([$userId, $accountId, $externalId]);
         $row = $stmt->fetch();
         return $row ?: null;
     }
@@ -56,6 +69,19 @@ final class TransactionRepository
         return $row ?: null;
     }
 
+    public function findByTransferGroup(string $groupId, int $userId): array
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT t.*, a.name AS account_name
+             FROM transactions t
+             LEFT JOIN accounts a ON a.id = t.account_id
+             WHERE t.user_id = ? AND t.transfer_group_id = ?
+             ORDER BY t.id ASC'
+        );
+        $stmt->execute([$userId, $groupId]);
+        return $stmt->fetchAll();
+    }
+
     public function list(int $userId, array $filters = []): array
     {
         $sql = 'SELECT t.*, c.name AS category_name, a.name AS account_name,
@@ -66,7 +92,7 @@ final class TransactionRepository
                 WHERE t.user_id = ?';
         $params = [$userId];
 
-        if (!empty($filters['type']) && in_array($filters['type'], ['income', 'expense'], true)) {
+        if (!empty($filters['type']) && in_array($filters['type'], ['income', 'expense', 'transfer'], true)) {
             $sql .= ' AND t.type = ?';
             $params[] = $filters['type'];
         }
@@ -126,6 +152,15 @@ final class TransactionRepository
         return $stmt->execute([$id, $userId]);
     }
 
+    public function deleteByTransferGroup(string $groupId, int $userId): int
+    {
+        $stmt = Database::pdo()->prepare(
+            'DELETE FROM transactions WHERE transfer_group_id = ? AND user_id = ?'
+        );
+        $stmt->execute([$groupId, $userId]);
+        return $stmt->rowCount();
+    }
+
     public function summary(int $userId): array
     {
         $year = date('Y');
@@ -134,13 +169,43 @@ final class TransactionRepository
         $to = date('Y-m-t');
 
         $stmt = Database::pdo()->prepare(
-            "SELECT
-                COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
-                COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expenses
+            "SELECT type, amount
              FROM transactions
-             WHERE user_id = ? AND txn_date >= ? AND txn_date <= ?"
+             WHERE user_id = ? AND txn_date >= ? AND txn_date <= ? AND type IN ('income','expense')"
         );
         $stmt->execute([$userId, $from, $to]);
-        return $stmt->fetch() ?: ['income' => '0.00', 'expenses' => '0.00'];
+        $income = Decimal::zero();
+        $expenses = Decimal::zero();
+        foreach ($stmt->fetchAll() as $row) {
+            if ($row['type'] === 'income') {
+                $income = Decimal::add($income, (string) $row['amount']);
+            } else {
+                $expenses = Decimal::add($expenses, (string) $row['amount']);
+            }
+        }
+        return ['income' => $income, 'expenses' => $expenses];
+    }
+
+    /** Find likely duplicates for import review. */
+    public function findLikelyDuplicate(int $userId, int $accountId, string $amount, string $date, string $merchant): ?array
+    {
+        $from = (new \DateTimeImmutable($date))->modify('-1 day')->format('Y-m-d');
+        $to = (new \DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d');
+        $stmt = Database::pdo()->prepare(
+            "SELECT * FROM transactions
+             WHERE user_id = ? AND account_id = ? AND amount = ?
+               AND txn_date >= ? AND txn_date <= ?
+               AND type IN ('income','expense')
+             ORDER BY id DESC LIMIT 20"
+        );
+        $stmt->execute([$userId, $accountId, $amount, $from, $to]);
+        $needle = mb_strtolower(trim($merchant));
+        foreach ($stmt->fetchAll() as $row) {
+            $hay = mb_strtolower((string) $row['merchant']);
+            if ($hay === $needle || str_contains($hay, $needle) || str_contains($needle, $hay)) {
+                return $row;
+            }
+        }
+        return null;
     }
 }

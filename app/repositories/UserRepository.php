@@ -39,4 +39,20 @@ final class UserRepository
         );
         $stmt->execute([$hash, $id]);
     }
+
+    public function incrementSessionVersion(int $id): int
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE users SET session_version = COALESCE(session_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        );
+        $stmt->execute([$id]);
+        $user = $this->findById($id);
+        return (int) ($user['session_version'] ?? 1);
+    }
+
+    public function delete(int $id): void
+    {
+        $stmt = Database::pdo()->prepare('DELETE FROM users WHERE id = ?');
+        $stmt->execute([$id]);
+    }
 }

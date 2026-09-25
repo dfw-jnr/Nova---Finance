@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Nova\Repositories;
 
 use Nova\Helpers\Database;
+use Nova\Helpers\Decimal;
 
 final class AnalyticsRepository
 {
@@ -18,46 +19,64 @@ final class AnalyticsRepository
         $from = (new \DateTimeImmutable("-{$days} days"))->format('Y-m-d');
 
         $stmt = Database::pdo()->prepare(
-            "SELECT txn_date,
-                    SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income,
-                    SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expenses
+            "SELECT txn_date, type, amount
              FROM transactions
-             WHERE user_id = ? AND txn_date >= ?
-             GROUP BY txn_date
+             WHERE user_id = ? AND txn_date >= ? AND type IN ('income','expense')
              ORDER BY txn_date ASC"
         );
         $stmt->execute([$userId, $from]);
-        return $stmt->fetchAll();
+        $byDate = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $d = $row['txn_date'];
+            if (!isset($byDate[$d])) {
+                $byDate[$d] = ['txn_date' => $d, 'income' => Decimal::zero(), 'expenses' => Decimal::zero()];
+            }
+            if ($row['type'] === 'income') {
+                $byDate[$d]['income'] = Decimal::add($byDate[$d]['income'], (string) $row['amount']);
+            } else {
+                $byDate[$d]['expenses'] = Decimal::add($byDate[$d]['expenses'], (string) $row['amount']);
+            }
+        }
+        return array_values($byDate);
     }
 
     public function spendingByCategory(int $userId, int $days = 30): array
     {
         $from = (new \DateTimeImmutable("-{$days} days"))->format('Y-m-d');
         $stmt = Database::pdo()->prepare(
-            "SELECT COALESCE(c.name, 'Other') AS category, SUM(t.amount) AS total
+            "SELECT COALESCE(c.name, 'Other') AS category, t.amount
              FROM transactions t
              LEFT JOIN categories c ON c.id = t.category_id
-             WHERE t.user_id = ? AND t.type = 'expense' AND t.txn_date >= ?
-             GROUP BY COALESCE(c.name, 'Other')
-             ORDER BY total DESC"
+             WHERE t.user_id = ? AND t.type = 'expense' AND t.txn_date >= ?"
         );
         $stmt->execute([$userId, $from]);
-        return $stmt->fetchAll();
+        $totals = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $cat = $row['category'];
+            $totals[$cat] = Decimal::add($totals[$cat] ?? Decimal::zero(), (string) $row['amount']);
+        }
+        $out = [];
+        foreach ($totals as $category => $total) {
+            $out[] = ['category' => $category, 'total' => $total];
+        }
+        usort($out, static fn ($a, $b) => Decimal::cmp($b['total'], $a['total']));
+        return $out;
     }
 
-    public function largestExpenses(int $userId, int $limit = 5): array
+    public function largestExpenses(int $userId, int $limit = 5, ?string $from = null): array
     {
-        $stmt = Database::pdo()->prepare(
-            "SELECT t.merchant, t.amount, t.txn_date, c.name AS category_name
+        $sql = "SELECT t.merchant, t.amount, t.txn_date, c.name AS category_name, t.id
              FROM transactions t
              LEFT JOIN categories c ON c.id = t.category_id
-             WHERE t.user_id = ? AND t.type = 'expense'
-             ORDER BY CAST(t.amount AS REAL) DESC
-             LIMIT ?"
-        );
-        $stmt->bindValue(1, $userId, \PDO::PARAM_INT);
-        $stmt->bindValue(2, $limit, \PDO::PARAM_INT);
-        $stmt->execute();
+             WHERE t.user_id = ? AND t.type = 'expense'";
+        $params = [$userId];
+        if ($from) {
+            $sql .= ' AND t.txn_date >= ?';
+            $params[] = $from;
+        }
+        $sql .= ' ORDER BY t.amount + 0 DESC LIMIT ' . (int) $limit;
+        $stmt = Database::pdo()->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 
@@ -65,23 +84,30 @@ final class AnalyticsRepository
     {
         $from = (new \DateTimeImmutable("-{$days} days"))->format('Y-m-d');
         $stmt = Database::pdo()->prepare(
-            "SELECT
-                COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
-                COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expenses
-             FROM transactions
-             WHERE user_id = ? AND txn_date >= ?"
+            "SELECT type, amount FROM transactions
+             WHERE user_id = ? AND txn_date >= ? AND type IN ('income','expense')"
         );
         $stmt->execute([$userId, $from]);
-        $row = $stmt->fetch() ?: ['income' => 0, 'expenses' => 0];
-        $income = (float) $row['income'];
-        $expenses = (float) $row['expenses'];
-        $savingsRate = $income > 0 ? round((($income - $expenses) / $income) * 100, 1) : 0.0;
-        $avgDaily = round($expenses / max($days, 1), 2);
+        $income = Decimal::zero();
+        $expenses = Decimal::zero();
+        foreach ($stmt->fetchAll() as $row) {
+            if ($row['type'] === 'income') {
+                $income = Decimal::add($income, (string) $row['amount']);
+            } else {
+                $expenses = Decimal::add($expenses, (string) $row['amount']);
+            }
+        }
+        $incomeCents = Decimal::toCents($income);
+        $expenseCents = Decimal::toCents($expenses);
+        $savingsRate = $incomeCents > 0
+            ? round((($incomeCents - $expenseCents) / $incomeCents) * 100, 1)
+            : 0.0;
+        $avgDaily = Decimal::fromCents((int) round($expenseCents / max($days, 1)));
         return [
-            'income' => number_format($income, 2, '.', ''),
-            'expenses' => number_format($expenses, 2, '.', ''),
+            'income' => $income,
+            'expenses' => $expenses,
             'savings_rate' => $savingsRate,
-            'avg_daily_spend' => number_format($avgDaily, 2, '.', ''),
+            'avg_daily_spend' => $avgDaily,
             'days' => $days,
         ];
     }

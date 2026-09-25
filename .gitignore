@@ -3,6 +3,8 @@ storage/rate/
 storage/*.log
 storage/*.sqlite
 storage/*.sqlite-*
+storage/.*_ready
+storage/.core_os*
 .DS_Store
 vendor/
 .env

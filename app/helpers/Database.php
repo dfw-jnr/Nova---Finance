@@ -32,6 +32,7 @@ final class Database
                 self::$pdo->exec($sql ?: '');
             }
             self::ensureReceiptsTable();
+            self::ensureCoreOsColumns();
             return self::$pdo;
         }
 
@@ -63,6 +64,7 @@ final class Database
             self::migrateMysql();
         }
         self::ensureReceiptsTable();
+        self::ensureCoreOsColumns();
         self::seedSystemCategories();
 
         return self::$pdo;
@@ -175,6 +177,120 @@ final class Database
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
         );
         @file_put_contents($flag, '1');
+    }
+
+    /**
+     * Additive Core OS columns — always idempotent (IF NOT EXISTS / column checks).
+     * Safe to re-run against production; never drops data.
+     */
+    private static function ensureCoreOsColumns(): void
+    {
+        if (self::isSqlite()) {
+            self::sqliteAddColumnIfMissing('transactions', 'transfer_group_id', 'TEXT NULL');
+            self::sqliteAddColumnIfMissing('transactions', 'external_id', 'TEXT NULL');
+            self::sqliteAddColumnIfMissing('users', 'session_version', 'INTEGER NOT NULL DEFAULT 1');
+            self::$pdo->exec(
+                'CREATE TABLE IF NOT EXISTS imports (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id INTEGER NOT NULL,
+                  filename TEXT NOT NULL,
+                  status TEXT NOT NULL DEFAULT \'pending\',
+                  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )'
+            );
+            self::$pdo->exec(
+                'CREATE TABLE IF NOT EXISTS import_rows (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  import_id INTEGER NOT NULL,
+                  row_index INTEGER NOT NULL,
+                  raw_json TEXT NOT NULL,
+                  merchant TEXT NULL,
+                  amount TEXT NULL,
+                  txn_date TEXT NULL,
+                  type TEXT NULL,
+                  external_id TEXT NULL,
+                  account_id INTEGER NULL,
+                  status TEXT NOT NULL DEFAULT \'pending\',
+                  duplicate_of INTEGER NULL,
+                  FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+                )'
+            );
+            return;
+        }
+
+        try {
+            self::$pdo->exec("ALTER TABLE transactions MODIFY type ENUM('expense','income','transfer') NOT NULL");
+        } catch (\Throwable $e) {
+            // already migrated or unsupported
+        }
+        self::mysqlAddColumnIfMissing('transactions', 'transfer_group_id', 'CHAR(36) NULL');
+        self::mysqlAddColumnIfMissing('transactions', 'external_id', 'VARCHAR(64) NULL');
+        self::mysqlAddColumnIfMissing('users', 'session_version', 'INT UNSIGNED NOT NULL DEFAULT 1');
+        try {
+            self::$pdo->exec('CREATE INDEX idx_txn_transfer_group ON transactions (transfer_group_id)');
+        } catch (\Throwable $e) {
+        }
+        try {
+            self::$pdo->exec('CREATE UNIQUE INDEX uq_txn_external ON transactions (user_id, account_id, external_id)');
+        } catch (\Throwable $e) {
+        }
+
+        self::$pdo->exec(
+            'CREATE TABLE IF NOT EXISTS imports (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              user_id BIGINT UNSIGNED NOT NULL,
+              filename VARCHAR(255) NOT NULL,
+              status VARCHAR(32) NOT NULL DEFAULT \'pending\',
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              KEY idx_imports_user (user_id),
+              CONSTRAINT fk_imports_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+        self::$pdo->exec(
+            'CREATE TABLE IF NOT EXISTS import_rows (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              import_id BIGINT UNSIGNED NOT NULL,
+              row_index INT UNSIGNED NOT NULL,
+              raw_json JSON NOT NULL,
+              merchant VARCHAR(160) NULL,
+              amount DECIMAL(14,2) NULL,
+              txn_date DATE NULL,
+              type VARCHAR(16) NULL,
+              external_id VARCHAR(64) NULL,
+              account_id BIGINT UNSIGNED NULL,
+              status VARCHAR(32) NOT NULL DEFAULT \'pending\',
+              duplicate_of BIGINT UNSIGNED NULL,
+              PRIMARY KEY (id),
+              KEY idx_import_rows_import (import_id),
+              CONSTRAINT fk_import_rows_import FOREIGN KEY (import_id) REFERENCES imports(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
+    }
+
+    private static function sqliteAddColumnIfMissing(string $table, string $column, string $def): void
+    {
+        $cols = self::$pdo->query("PRAGMA table_info({$table})")->fetchAll();
+        foreach ($cols as $c) {
+            if (($c['name'] ?? '') === $column) {
+                return;
+            }
+        }
+        self::$pdo->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$def}");
+    }
+
+    private static function mysqlAddColumnIfMissing(string $table, string $column, string $def): void
+    {
+        $stmt = self::$pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$table, $column]);
+        if ((int) $stmt->fetchColumn() > 0) {
+            return;
+        }
+        self::$pdo->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$def}");
     }
 
     public static function pdo(): \PDO

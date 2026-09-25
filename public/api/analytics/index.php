@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/app/bootstrap.php';
 
+use Nova\Helpers\Decimal;
 use Nova\Helpers\Response;
-use Nova\Repositories\AnalyticsRepository;
 use Nova\Repositories\AccountRepository;
+use Nova\Repositories\AnalyticsRepository;
 use Nova\Repositories\TransactionRepository;
 use Nova\Services\AuthService;
 
@@ -29,23 +30,24 @@ $days = match ($range) {
 $analytics = new AnalyticsRepository();
 $accounts = new AccountRepository();
 $txns = new TransactionRepository();
+$base = strtoupper((string) $user['currency']);
 
-$accountList = $accounts->listForUser($userId);
-$totalBalance = '0.00';
-foreach ($accountList as $a) {
-    $totalBalance = number_format((float) $totalBalance + (float) $a['balance'], 2, '.', '');
+$totalBalance = Decimal::zero();
+foreach ($accounts->listForUser($userId) as $a) {
+    if (strtoupper((string) $a['currency']) === $base) {
+        $totalBalance = Decimal::add($totalBalance, (string) $a['balance']);
+    }
 }
 
-$month = $txns->summary($userId);
-$averages = $analytics->averages($userId, $days);
+$from = (new DateTimeImmutable("-{$days} days"))->format('Y-m-d');
 
 Response::ok([
     'range' => $range,
     'total_balance' => $totalBalance,
-    'month' => $month,
+    'month' => $txns->summary($userId),
     'cashflow' => $analytics->cashflow($userId, $range),
     'by_category' => $analytics->spendingByCategory($userId, $days),
-    'largest_expenses' => $analytics->largestExpenses($userId),
-    'averages' => $averages,
-    'currency' => $user['currency'],
+    'largest_expenses' => $analytics->largestExpenses($userId, 5, $from),
+    'averages' => $analytics->averages($userId, $days),
+    'currency' => $base,
 ]);

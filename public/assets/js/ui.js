@@ -22,11 +22,14 @@
   }
 
   function money(n, currency = 'EUR', signed = false, type = null) {
-    const abs = Math.abs(Number(n) || 0);
+    const num = typeof n === 'number' ? n : Number(String(n).replace(/,/g, ''));
+    if (!Number.isFinite(num)) return '—';
+    const abs = Math.abs(num);
     const formatted = abs.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const sym = { EUR: '€', USD: '$', GBP: '£', GHS: 'GH₵' }[currency] || currency + ' ';
-    if (type === 'income' || (signed && Number(n) > 0)) return '+' + sym + formatted;
-    if (type === 'expense' || (signed && Number(n) < 0)) return '−' + sym + formatted;
+    if (type === 'transfer') return sym + formatted;
+    if (type === 'income' || (signed && num > 0)) return '+' + sym + formatted;
+    if (type === 'expense' || (signed && num < 0)) return '−' + sym + formatted;
     return sym + formatted;
   }
 
