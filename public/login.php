@@ -21,7 +21,7 @@ $csrf = Csrf::token();
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Sign in — NOVA</title>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/app.css" />
+  <link rel="stylesheet" href="/assets/css/app.css?v=6" />
   <script>
     try {
       var t = localStorage.getItem('nova-theme') || 'system';
