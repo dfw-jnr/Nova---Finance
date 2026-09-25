@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nova-finance
+    runtime: docker
+    plan: free
+    healthCheckPath: /login.php
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "0"
+      - key: DB_DRIVER
+        value: sqlite
+      - key: APP_URL
+        sync: false

@@ -1,0 +1,10 @@
+app/config/env.php
+storage/rate/
+storage/*.log
+storage/*.sqlite
+storage/*.sqlite-*
+.DS_Store
+vendor/
+.env
+.idea/
+.vscode/

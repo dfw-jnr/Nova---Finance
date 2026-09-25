@@ -1,0 +1,264 @@
+  <div id="status-banner" class="status-banner" role="status" aria-live="polite"></div>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <p class="greet" id="greet-text">Good morning<strong>…</strong></p>
+      <div style="display:flex;gap:.25rem">
+        <button type="button" class="icon-btn" data-open-palette aria-label="Command palette">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" class="icon-btn" id="theme-cycle" aria-label="Cycle theme">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 14.5A7 7 0 0 1 9.5 6 6.5 6.5 0 1 0 18 14.5Z" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="screen is-active" data-screen="home" aria-label="Home">
+      <div class="hero-balance">
+        <p class="label">Total Balance</p>
+        <p class="value" id="hero-balance">€0.00</p>
+      </div>
+      <div class="stat-row" role="list">
+        <div class="stat stat--in" role="listitem"><p class="label">Income</p><p class="value" id="stat-income">€0.00</p></div>
+        <div class="stat stat--out" role="listitem"><p class="label">Expenses</p><p class="value" id="stat-expenses">€0.00</p></div>
+        <div class="stat" role="listitem"><p class="label">Savings</p><p class="value" id="stat-savings">€0.00</p></div>
+      </div>
+      <div class="section-head">
+        <h2>Recent</h2>
+        <button type="button" data-nav-jump="transactions">See all</button>
+      </div>
+      <div id="home-txns"></div>
+    </section>
+
+    <section class="screen" data-screen="transactions" aria-label="Transactions">
+      <div class="section-head"><h2>Transactions</h2></div>
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input type="search" id="txn-search" placeholder="Search merchant, category, amount" enterkeyhint="search" aria-label="Search transactions" />
+      </div>
+      <div class="filters" role="toolbar" aria-label="Filters">
+        <button type="button" class="chip is-active" data-filter-type="">All</button>
+        <button type="button" class="chip" data-filter-type="expense">Expenses</button>
+        <button type="button" class="chip" data-filter-type="income">Income</button>
+      </div>
+      <div id="txn-list"></div>
+    </section>
+
+    <section class="screen" data-screen="analytics" aria-label="Analytics" id="analytics-panel">
+      <div class="section-head"><h2>Analytics</h2></div>
+      <div class="segmented" role="tablist" aria-label="Range">
+        <button type="button" data-range="7D" role="tab">7D</button>
+        <button type="button" class="is-active" data-range="30D" role="tab">30D</button>
+        <button type="button" data-range="90D" role="tab">90D</button>
+        <button type="button" data-range="1Y" role="tab">1Y</button>
+      </div>
+      <div class="chart-box">
+        <h3>Income vs Expenses</h3>
+        <p class="sub" id="an-summary">Loading…</p>
+        <svg id="cashflow-svg" class="chart-svg" viewBox="0 0 640 200" role="img" aria-label="Income versus expenses chart"></svg>
+      </div>
+      <div class="stat-row" style="margin-bottom:1rem">
+        <div class="stat"><p class="label">Savings rate</p><p class="value" id="an-savings">0%</p></div>
+        <div class="stat" style="grid-column: span 2"><p class="label">Avg daily spend</p><p class="value" id="an-avg">€0.00</p></div>
+      </div>
+      <div class="chart-box">
+        <h3>Spending by category</h3>
+        <div class="bars" id="category-bars"></div>
+      </div>
+      <div class="section-head"><h2>Budgets</h2><button type="button" data-open-budget-btn>New</button></div>
+      <div id="budget-list" class="card-list"></div>
+      <div class="section-head" style="margin-top:1.5rem"><h2>Largest expenses</h2></div>
+      <ul id="largest-list"></ul>
+    </section>
+
+    <section class="screen" data-screen="goals" aria-label="Goals">
+      <div class="section-head"><h2>Goals</h2><button type="button" data-open-goal-btn>New</button></div>
+      <div id="goal-list" class="card-list"></div>
+    </section>
+
+    <section class="screen" data-screen="more" aria-label="More">
+      <div class="section-head"><h2>More</h2></div>
+      <div class="more-list">
+        <button type="button" data-open-account-btn>Add account</button>
+        <button type="button" data-open-palette>Command palette</button>
+        <button type="button" id="btn-logout">Log out</button>
+      </div>
+      <div class="section-head" style="margin-top:1.5rem"><h2>Accounts</h2></div>
+      <div id="account-list" class="card-list"></div>
+    </section>
+  </div>
+
+  <button type="button" class="btn btn--fab" aria-label="Add transaction">+</button>
+
+  <nav class="bottom-nav" aria-label="Primary">
+    <button type="button" class="is-active" data-nav="home" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      Home
+    </button>
+    <button type="button" data-nav="transactions">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      Transactions
+    </button>
+    <button type="button" data-nav="analytics">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19V10M10 19V5M15 19v-7M20 19V8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      Analytics
+    </button>
+    <button type="button" data-nav="goals">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+      Goals
+    </button>
+    <button type="button" data-nav="more">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/></svg>
+      More
+    </button>
+  </nav>
+
+  <div class="modal" id="modal-txn" hidden>
+    <div class="modal__scrim" data-modal-dismiss tabindex="-1"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="txn-title">
+      <header class="modal__head">
+        <h2 id="txn-title">Add Transaction</h2>
+        <button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button>
+      </header>
+      <form id="form-txn">
+        <div class="type-toggle" role="radiogroup" aria-label="Type">
+          <label><input type="radio" name="type" value="expense" checked /> Expense</label>
+          <label><input type="radio" name="type" value="income" /> Income</label>
+        </div>
+        <div class="field" id="field-amount">
+          <label for="txn-amount">Amount</label>
+          <input id="txn-amount" name="amount" inputmode="decimal" required autocomplete="off" />
+        </div>
+        <div class="field" id="field-merchant">
+          <label for="txn-merchant">Description</label>
+          <input id="txn-merchant" name="merchant" required maxlength="160" />
+        </div>
+        <div class="field">
+          <label for="txn-category">Category</label>
+          <select id="txn-category" name="category_id"></select>
+        </div>
+        <div class="field">
+          <label for="txn-account">Account</label>
+          <select id="txn-account" name="account_id" required></select>
+        </div>
+        <div class="field">
+          <label for="txn-date">Date</label>
+          <input id="txn-date" name="txn_date" type="date" required />
+        </div>
+        <div class="field">
+          <label for="txn-notes">Notes</label>
+          <textarea id="txn-notes" name="notes" maxlength="2000"></textarea>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-modal-dismiss>Cancel</button>
+          <button type="submit" class="btn btn--primary" style="width:auto">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-detail" hidden>
+    <div class="modal__scrim" data-modal-dismiss tabindex="-1"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <header class="modal__head">
+        <h2 id="detail-title">Transaction</h2>
+        <button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button>
+      </header>
+      <p class="detail-amount" id="detail-amount"></p>
+      <dl class="detail-grid">
+        <div><dt>Merchant</dt><dd id="detail-merchant"></dd></div>
+        <div><dt>Category</dt><dd id="detail-category"></dd></div>
+        <div><dt>Date</dt><dd id="detail-date"></dd></div>
+        <div><dt>Account</dt><dd id="detail-account"></dd></div>
+        <div><dt>Notes</dt><dd id="detail-notes"></dd></div>
+        <div><dt>Created</dt><dd id="detail-created"></dd></div>
+      </dl>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--danger" id="btn-delete-txn" style="width:auto">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-budget" hidden>
+    <div class="modal__scrim" data-modal-dismiss></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="budget-title">
+      <header class="modal__head"><h2 id="budget-title">Create budget</h2><button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button></header>
+      <form id="form-budget">
+        <div class="field"><label for="budget-name">Name</label><input id="budget-name" name="name" required /></div>
+        <div class="field"><label for="budget-category">Category</label><select id="budget-category" name="category_id" required></select></div>
+        <div class="field"><label for="budget-limit">Monthly limit</label><input id="budget-limit" name="limit_amount" inputmode="decimal" required /></div>
+        <div class="modal__actions"><button type="submit" class="btn btn--primary" style="width:auto">Create</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-goal" hidden>
+    <div class="modal__scrim" data-modal-dismiss></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="goal-title">
+      <header class="modal__head"><h2 id="goal-title">Create goal</h2><button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button></header>
+      <form id="form-goal">
+        <div class="field"><label for="goal-name">Name</label><input id="goal-name" name="name" required /></div>
+        <div class="field"><label for="goal-target">Target</label><input id="goal-target" name="target_amount" inputmode="decimal" required /></div>
+        <div class="field"><label for="goal-current">Current</label><input id="goal-current" name="current_amount" inputmode="decimal" value="0" /></div>
+        <div class="field"><label for="goal-date">Target date</label><input id="goal-date" name="target_date" type="date" /></div>
+        <div class="modal__actions"><button type="submit" class="btn btn--primary" style="width:auto">Create</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-account" hidden>
+    <div class="modal__scrim" data-modal-dismiss></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="acc-title">
+      <header class="modal__head"><h2 id="acc-title">Add account</h2><button type="button" class="icon-btn" data-modal-dismiss aria-label="Close">✕</button></header>
+      <form id="form-account">
+        <div class="field"><label for="acc-name">Name</label><input id="acc-name" name="name" required /></div>
+        <div class="field"><label for="acc-type">Type</label>
+          <select id="acc-type" name="type">
+            <option value="cash">Cash</option>
+            <option value="bank" selected>Bank</option>
+            <option value="savings">Savings</option>
+            <option value="credit">Credit Card</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field"><label for="acc-currency">Currency</label>
+          <select id="acc-currency" name="currency">
+            <option>EUR</option><option>USD</option><option>GBP</option><option>GHS</option>
+          </select>
+        </div>
+        <div class="field"><label for="acc-balance">Opening balance</label><input id="acc-balance" name="balance" inputmode="decimal" value="0" /></div>
+        <div class="modal__actions"><button type="submit" class="btn btn--primary" style="width:auto">Create</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="palette" id="command-palette" hidden>
+    <div class="palette__scrim" data-palette-dismiss></div>
+    <div class="palette__dialog" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div class="palette__search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="palette-input" type="text" placeholder="Type a command…" role="combobox" aria-expanded="true" aria-controls="palette-results" autocomplete="off" />
+      </div>
+      <ul class="palette__results" id="palette-results" role="listbox"></ul>
+    </div>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+  <script src="/assets/js/api.js" defer></script>
+  <script src="/assets/js/ui.js" defer></script>
+  <script src="/assets/js/transactions.js" defer></script>
+  <script src="/assets/js/charts.js" defer></script>
+  <script src="/assets/js/app.js" defer></script>
+  <script>
+    document.querySelector('[data-nav-jump="transactions"]')?.addEventListener('click', () => {
+      document.querySelector('[data-nav="transactions"]')?.click();
+    });
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t.matches('[data-open-budget-btn]')) window.NovaUI?.openModal('modal-budget');
+      if (t.matches('[data-open-goal-btn]')) window.NovaUI?.openModal('modal-goal');
+      if (t.matches('[data-open-account-btn]')) window.NovaUI?.openModal('modal-account');
+    });
+  </script>
