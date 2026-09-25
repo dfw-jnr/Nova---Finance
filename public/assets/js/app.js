@@ -75,7 +75,7 @@
     if (chartsReady) return chartsReady;
     chartsReady = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = '/assets/js/charts.js?v=12';
+      s.src = '/assets/js/charts.js?v=13';
       s.async = true;
       s.onload = () => resolve();
       s.onerror = () => reject(new Error('Charts failed to load'));

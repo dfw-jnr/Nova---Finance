@@ -175,13 +175,14 @@
 
   function bind() {
     const input = document.getElementById('receipt-input');
+    const camera = document.getElementById('receipt-camera');
     const clearBtn = document.getElementById('receipt-clear');
     const ocrBtn = document.getElementById('receipt-ocr');
-    if (!input) return;
+    if (!input && !camera) return;
 
-    input.addEventListener('change', async () => {
-      const file = input.files?.[0];
-      input.value = '';
+    const onPick = async (el) => {
+      const file = el.files?.[0];
+      el.value = '';
       if (!file) return;
       try {
         await handleFile(file);
@@ -189,7 +190,10 @@
         setStatus(e.message || 'Could not use that image');
         global.NovaUI?.toast(e.message || 'Could not use that image');
       }
-    });
+    };
+
+    input?.addEventListener('change', () => onPick(input));
+    camera?.addEventListener('change', () => onPick(camera));
 
     ocrBtn?.addEventListener('click', async () => {
       if (!pendingReceipt?.base64) return;

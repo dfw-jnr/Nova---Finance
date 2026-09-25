@@ -27,8 +27,8 @@ $csrf = Csrf::token();
   <title>NOVA — Personal Finance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="/assets/css/app.css?v=12" />
-  <link rel="stylesheet" href="/assets/css/components.css?v=12" />
+  <link rel="stylesheet" href="/assets/css/app.css?v=13" />
+  <link rel="stylesheet" href="/assets/css/components.css?v=13" />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" /></noscript>  <script>
     (function () {
