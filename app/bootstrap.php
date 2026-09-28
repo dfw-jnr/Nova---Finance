@@ -50,20 +50,33 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 try {
     Database::connect($config['db']);
 } catch (Throwable $e) {
-    if (!empty($config['debug'])) {
-        http_response_code(500);
-        header('Content-Type: application/json');
+    error_log('NOVA DB connect failed: ' . $e->getMessage());
+    http_response_code(500);
+    $isApi = str_contains($_SERVER['REQUEST_URI'] ?? '', '/api/');
+    $detail = !empty($config['debug']) ? $e->getMessage() : null;
+    $message = 'Database unavailable. If you use managed MySQL, check DATABASE_URL / that the host still exists.';
+    if ($isApi) {
+        header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'success' => false,
             'error' => [
                 'code' => 'DB_CONNECTION',
-                'message' => 'Database connection failed. Check app/config/env.php and run database/schema.sql.',
+                'message' => $message,
+                'detail' => $detail,
             ],
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
-    http_response_code(500);
-    echo 'Service unavailable';
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NOVA — Unavailable</title>';
+    echo '<style>body{font-family:system-ui,sans-serif;background:#0b0d10;color:#e8eaed;display:grid;place-items:center;min-height:100vh;margin:0;padding:1.5rem;text-align:center}';
+    echo 'h1{font-size:1.25rem;margin:0 0 .75rem}p{color:#9aa3b2;max-width:28rem;line-height:1.45}</style></head><body>';
+    echo '<div><h1>NOVA can’t reach the database</h1>';
+    echo '<p>' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</p>';
+    if ($detail) {
+        echo '<p style="font-size:.8rem;color:#6b7380">' . htmlspecialchars($detail, ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+    echo '</div></body></html>';
     exit;
 }
 

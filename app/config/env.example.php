@@ -53,6 +53,12 @@ $driverEnv = getenv('DB_DRIVER');
 if ($driverEnv) {
     $db['driver'] = $driverEnv;
 }
+
+// Emergency / local override: force sqlite even if DATABASE_URL is set
+if (filter_var(getenv('ALLOW_EPHEMERAL_SQLITE') ?: '0', FILTER_VALIDATE_BOOLEAN)
+    && strtolower((string) (getenv('DB_DRIVER') ?: '')) === 'sqlite') {
+    $db['driver'] = 'sqlite';
+}
 if (getenv('DB_HOST')) {
     $db['driver'] = $db['driver'] === 'sqlite' && !getenv('DB_DRIVER') ? 'mysql' : $db['driver'];
     $db['host'] = getenv('DB_HOST') ?: $db['host'];

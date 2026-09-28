@@ -31,8 +31,12 @@ final class Database
                 $sql = file_get_contents(dirname(__DIR__, 2) . '/database/schema.sqlite.sql');
                 self::$pdo->exec($sql ?: '');
             }
-            self::ensureReceiptsTable();
-            self::ensureCoreOsColumns();
+            try {
+                self::ensureReceiptsTable();
+                self::ensureCoreOsColumns();
+            } catch (\Throwable $e) {
+                error_log('NOVA sqlite schema ensure failed: ' . $e->getMessage());
+            }
             return self::$pdo;
         }
 
@@ -63,9 +67,15 @@ final class Database
         if (self::needsSchema('mysql')) {
             self::migrateMysql();
         }
-        self::ensureReceiptsTable();
-        self::ensureCoreOsColumns();
-        self::seedSystemCategories();
+        // Additive migrations must never take down boot if a statement fails.
+        try {
+            self::ensureReceiptsTable();
+            self::ensureCoreOsColumns();
+            self::seedSystemCategories();
+        } catch (\Throwable $e) {
+            error_log('NOVA schema ensure failed: ' . $e->getMessage());
+            // Connection is up; continue serving. Next request may retry schema.
+        }
 
         return self::$pdo;
     }
