@@ -79,10 +79,13 @@ if (filter_var(getenv('DB_SSL') ?: '0', FILTER_VALIDATE_BOOLEAN)) {
     $db['ssl'] = true;
 }
 
-// Production without MySQL = data loss on every Render deploy
-if ($isProd && ($db['driver'] ?? '') === 'sqlite' && !getenv('ALLOW_EPHEMERAL_SQLITE')) {
-    // Prefer mysql when any remote hint exists; otherwise keep sqlite for boot
-    // but operators should set DATABASE_URL.
+// Production must use managed MySQL — SQLite on Render is wiped every deploy.
+if ($isProd && ($db['driver'] ?? '') === 'sqlite'
+    && !filter_var(getenv('ALLOW_EPHEMERAL_SQLITE') ?: '0', FILTER_VALIDATE_BOOLEAN)) {
+    throw new \RuntimeException(
+        'Production requires managed MySQL (set DATABASE_URL + DB_DRIVER=mysql). '
+        . 'Ephemeral SQLite is blocked unless ALLOW_EPHEMERAL_SQLITE=1.'
+    );
 }
 
 return [

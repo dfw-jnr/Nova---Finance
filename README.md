@@ -85,6 +85,10 @@ Render wipes the container disk on every deploy, so **SQLite will lose all accou
    - `DB_SSL` = `1`
 4. Redeploy once — tables are created automatically; data survives future deploys
 
+**Keep the Aiven service powered on.** Free Aiven MySQL can auto power-off after inactivity; the app will fail until you Power on the service again (your data is preserved). For always-on DB without power-offs, upgrade the Aiven plan (~$5/mo).
+
+Production refuses ephemeral SQLite unless `ALLOW_EPHEMERAL_SQLITE=1` (emergency only).
+
 Free Render instances still sleep after idle (first open can take ~30s).
 
 ## Install on iPhone (like a real app)

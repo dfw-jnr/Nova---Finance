@@ -5,7 +5,25 @@ declare(strict_types=1);
  * Application bootstrap — loaded by public entrypoints.
  */
 
-$config = require __DIR__ . '/config/env.php';
+try {
+    $config = require __DIR__ . '/config/env.php';
+} catch (Throwable $e) {
+    http_response_code(500);
+    $isApi = str_contains($_SERVER['REQUEST_URI'] ?? '', '/api/');
+    $message = $e->getMessage();
+    if ($isApi) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => false,
+            'error' => ['code' => 'CONFIG', 'message' => $message],
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>NOVA</title></head><body>';
+    echo '<h1>Configuration error</h1><p>' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</p></body></html>';
+    exit;
+}
 
 spl_autoload_register(static function (string $class): void {
     if (!str_starts_with($class, 'Nova\\')) {
